@@ -1,0 +1,103 @@
+---
+title: "Comp3_trends&backsliders"
+output: html_document
+---
+
+# load data and packages
+```{r}
+# set working directory
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+#load libraries/packages
+source("packages.R")
+# load data
+source("Comp2_panel_wrangling.R")
+```
+
+```{r}
+# filter for countries that have experienced backsliding
+backsliders <- panel_data %>%
+  filter(year >= 2015, regch_event < 0) %>%
+  group_by(country_code) %>%
+  summarise(backsliding_years = n()) %>%
+  filter(backsliding_years > 0) %>%
+  ungroup()
+
+# Get the list of backsliding countries
+backsliding_countries <- backsliders$country_code
+# Filter the main data for backsliding countries
+backsliding_data <- panel_data %>%
+  filter(country_code %in% backsliding_countries, year >= 2015) %>%
+  arrange(country_code, year)
+
+```
+
+```{r}
+# Create a function to plot trends for backsliding countries
+plot_backsliding_trends <- function(data, country_code, start_year = 2015, end_year = 2025) {
+  # Filter and preprocess
+  country_data <- data %>%
+    filter(country_code == !!country_code,
+           year >= start_year, year <= end_year) %>%
+    select(year, sdg_overall, spi_comp, di_score, log_gdppc)
+  
+  # Reshape data for plotting
+  country_data_long <- pivot_longer(country_data, 
+                                    cols = c(sdg_overall, spi_comp, di_score, log_gdppc),
+                                    names_to = "variable", 
+                                    values_to = "value")
+  
+  # Plot
+  ggplot(country_data_long, aes(x = year, y = value, color = variable)) +
+    geom_line() +
+    labs(title = paste("Trends in", country_code),
+         x = "Year",
+         y = "Value") +
+    theme_minimal() +
+    scale_color_manual(values = c("sdg_overall" = "blue", 
+                                   "spi_comp" = "green", 
+                                   "di_score" = "red", 
+                                   "log_gdppc" = "purple"))
+}
+# Plot trends for each backsliding country
+for (country in backsliding_countries) {
+  print(plot_backsliding_trends(backsliding_data, country))
+}
+# Save the plots
+#ggsave("figures/backsliding_trends.png", width = 10, height = 6, dpi = 300)
+```
+
+```{r}
+# Create a function to plot trends for backsliding countries with z-scores
+plot_backsliding_trends_z <- function(data, country_code, start_year = 2015, end_year = 2025) {
+  # Filter and preprocess
+  country_data <- data %>%
+    filter(country_code == !!country_code,
+           year >= start_year, year <= end_year) %>%
+    select(year, sdg_overall, spi_comp, di_score, log_gdppc)
+  
+  # Calculate z-scores
+  country_data_z <- country_data %>%
+    mutate(across(sdg_overall:log_gdppc, ~ scale(.) %>% as.vector(), .names = "{.col}_z")) %>%
+    select(year, ends_with("_z"))
+  
+  # Reshape data for plotting
+  country_data_long_z <- pivot_longer(country_data_z, 
+                                      cols = ends_with("_z"),
+                                      names_to = "variable", 
+                                      values_to = "value")
+  
+  # Plot
+  ggplot(country_data_long_z, aes(x = year, y = value, color = variable)) +
+    geom_line() +
+    labs(title = paste("Z-Scores Trends in", country_code),
+         x = "Year",
+         y = "Z-Score") +
+    theme_minimal() +
+    scale_color_manual(values = c("sdg_overall_z" = "blue", 
+                                   "spi_comp_z" = "green", 
+                                   "di_score_z" = "red", 
+                                   "log_gdppc_z" = "purple"))
+}
+```
+
+

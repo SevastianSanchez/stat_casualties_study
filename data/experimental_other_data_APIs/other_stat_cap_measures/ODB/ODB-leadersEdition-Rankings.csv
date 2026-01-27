@@ -1,0 +1,31 @@
+Year,Region,ISO2,ISO3,ODB Rank,Country,ODB-Score,ODB-Score-Change,Readiness,Implementation,Impact,Readiness-Policies,Readiness-Action,Readiness-Civil,Readiness-Business,Implementation-Innovation,Implementation-Social,Implementation-Accountability,Impact-Political,Impact-Social,Impact-Economic
+2017,North America,CA,CAN,1,Canada,76,8,86,87,55,78,99,87,80,93,83,85,60,55,50
+2017,Europe & Central Asia,GB,GBR,1,United Kingdom,76,1,83,89,57,78,93,74,88,92,85,91,55,30,85
+2017,East Asia & Pacific,AU,AUS,3,Australia,75,13,79,84,62,75,86,77,77,91,90,70,50,60,75
+2017,Europe & Central Asia,FR,FRA,4,France,72,7,84,77,55,79,91,85,81,85,74,71,55,40,70
+2017,East Asia & Pacific,KR,KOR,4,South Korea,72,10,82,67,67,78,88,78,86,81,73,46,65,50,85
+2017,Latin America & Caribbean,MX,MEX,6,Mexico,69,11,79,67,62,76,88,81,72,73,55,74,75,45,65
+2017,East Asia & Pacific,JP,JPN,7,Japan,68,10,78,68,58,69,83,84,75,65,66,74,55,50,70
+2017,East Asia & Pacific,NZ,NZL,7,New Zealand,68,7,79,72,52,73,88,82,73,74,76,65,45,55,55
+2017,North America,US,USA,9,United States of America,64,1,79,76,37,74,84,72,85,90,72,66,20,30,60
+2017,Europe & Central Asia,DE,DEU,10,Germany,58,2,76,72,27,61,81,81,79,77,74,65,25,15,40
+2017,Latin America & Caribbean,UY,URY,11,Uruguay,56,6,71,70,28,60,73,87,63,72,72,65,50,15,20
+2017,Latin America & Caribbean,CO,COL,12,Colombia,52,8,69,60,28,75,73,71,58,59,70,52,45,20,20
+2017,Europe & Central Asia,RU,RUS,13,Russia,51,8,62,59,32,62,74,45,67,73,59,45,50,0,45
+2017,Latin America & Caribbean,BR,BRA,14,Brazil,50,3,63,56,30,68,68,60,55,45,61,62,60,15,15
+2017,Europe & Central Asia,IT,ITA,14,Italy,50,2,61,61,27,59,66,75,43,59,68,57,30,10,40
+2017,South Asia,IN,IND,16,India,48,9,64,49,32,67,72,62,56,53,42,52,30,20,45
+2017,Latin America & Caribbean,AR,ARG,17,Argentina,47,11,66,56,20,55,77,68,63,70,42,56,20,5,35
+2017,Europe & Central Asia,UA,UKR,17,Ukraine,47,13,60,52,28,52,70,68,52,57,36,62,35,5,45
+2017,East Asia & Pacific,PH,PHL,19,Philippines,42,-1,54,42,30,60,46,61,49,46,39,41,35,30,25
+2017,Latin America & Caribbean,CL,CHL,20,Chile,40,-1,54,55,12,40,56,68,53,63,50,52,25,0,10
+2017,East Asia & Pacific,ID,IDN,21,Indonesia,37,3,49,45,17,39,52,61,43,54,47,35,30,10,10
+2017,Sub-Saharan Africa,ZA,ZAF,22,South Africa,36,4,50,37,22,22,52,72,53,40,28,43,15,25,25
+2017,Latin America & Caribbean,PY,PRY,23,Paraguay,34,7,41,45,15,37,40,44,43,54,26,54,20,20,5
+2017,East Asia & Pacific,CN,CHN,24,China,31,9,44,38,10,34,59,34,48,44,47,23,5,15,10
+2017,Latin America & Caribbean,CR,CRI,24,Costa Rica,31,11,48,43,3,35,45,58,53,38,53,38,5,0,5
+2017,Europe & Central Asia,TR,TUR,24,Turkey,31,-1,33,53,7,23,27,40,43,51,65,44,5,10,5
+2017,Latin America & Caribbean,PA,PAN,27,Panama,30,10,47,42,0,56,34,56,43,36,55,36,0,0,0
+2017,Latin America & Caribbean,GT,GTM,28,Guatemala,26,2,36,37,5,29,36,46,35,44,36,31,15,0,0
+2017,Middle East & North Africa,SA,SAU,29,Saudi Arabia,25,5,40,32,3,44,52,12,51,40,40,17,0,5,5
+2017,Sub-Saharan Africa,SL,SLE,30,Sierra Leone,22,8,33,23,10,29,24,49,31,16,23,31,10,20,0

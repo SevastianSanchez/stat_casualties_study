@@ -1,0 +1,60 @@
+country_code,country_name,removed_from
+MYT,Mayotte,Not in Either Analysis
+SOL,Somaliland,Not in Either Analysis
+TWN,Taiwan,Not in Either Analysis
+ZNZ,Zanzibar,Not in Either Analysis
+ABW,Aruba,Not in Either Analysis
+ASM,American Samoa,Not in Either Analysis
+BMU,Bermuda,Not in Either Analysis
+CHI,Channel Islands,Not in Either Analysis
+COM,Comoros,Not in SPI Analysis
+CUB,Cuba,Not in SPI Analysis
+CUW,Curaçao,Not in Either Analysis
+CYM,Cayman Islands,Not in Either Analysis
+ERI,Eritrea,Not in Either Analysis
+FRO,Faroe Islands,Not in Either Analysis
+GIB,Gibraltar,Not in Either Analysis
+GRL,Greenland,Not in Either Analysis
+GUM,Guam,Not in Either Analysis
+HKG,Hong Kong SAR China,Not in Either Analysis
+IMN,Isle of Man,Not in Either Analysis
+LIE,Liechtenstein,Not in Either Analysis
+MAC,Macao SAR China,Not in Either Analysis
+MAF,Saint Martin (French part),Not in Either Analysis
+MCO,Monaco,Not in Either Analysis
+MNP,Northern Mariana Islands,Not in Either Analysis
+NCL,New Caledonia,Not in Either Analysis
+PRI,Puerto Rico,Not in Either Analysis
+PRK,North Korea,Not in Either Analysis
+PYF,French Polynesia,Not in Either Analysis
+SMR,San Marino,Not in Either Analysis
+SXM,Sint Maarten,Not in Either Analysis
+TCA,Turks & Caicos Islands,Not in Either Analysis
+VGB,British Virgin Islands,Not in Either Analysis
+VIR,U.S. Virgin Islands,Not in Either Analysis
+XKX,Kosovo,Not in Either Analysis
+AND,Andorra,Not in Either Analysis
+ATG,Antigua & Barbuda,Not in Either Analysis
+BRB,Barbados,Not in SPI Analysis
+BRN,Brunei,Not in SPI Analysis
+CAF,Central African Republic,Not in SPI Analysis
+DMA,Dominica,Not in Either Analysis
+GNQ,Equatorial Guinea,Not in Either Analysis
+GRD,Grenada,Not in Either Analysis
+KNA,St. Kitts & Nevis,Not in Either Analysis
+NRU,Nauru,Not in Either Analysis
+PLW,Palau,Not in Either Analysis
+TON,Tonga,Not in Either Analysis
+TUV,Tuvalu,Not in Either Analysis
+FSM,Micronesia (Federated States of),Not in SDG Analysis
+KIR,Kiribati,Not in SDG Analysis
+LBY,Libya,Not in SDG Analysis
+LCA,St. Lucia,Not in SDG Analysis
+MHL,Marshall Islands,Not in SDG Analysis
+PSE,West Bank and Gaza,Not in SDG Analysis
+SLB,Solomon Islands,Not in SDG Analysis
+SYC,Seychelles,Not in SDG Analysis
+TLS,Timor-Leste,Not in SDG Analysis
+VCT,St. Vincent & Grenadines,Not in SDG Analysis
+VUT,Vanuatu,Not in SDG Analysis
+WSM,Samoa,Not in SDG Analysis

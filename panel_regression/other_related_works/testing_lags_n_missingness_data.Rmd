@@ -1,0 +1,96 @@
+---
+title: "SPI~SDG+DI"
+output: html_document
+---
+# TESTING REVERSE CAUSALITY: SPI AS DV, SDG AND DI AS IVS
+
+# Set up and Wrangling 
+```{r}
+# set working directory
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+
+#load libraries/packages
+source("packages.R")
+
+# load data
+source("Comp2_panel_wrangling.R")
+
+# select relevant data and arrange
+panel_data1 <- panel_data %>% 
+  dplyr::select(country_name, country_code, year, spi_comp, di_score, elect_dem, log_gdppc, sdg_overall, income_level_recoded) %>%
+  dplyr::arrange(country_code, year)
+
+# changing between di_score from EIU and V-Dem Electoral Democracy Index (elect_dem)
+#panel_data1$di_var <- panel_data1$elect_dem
+panel_data1$di_var <- panel_data1$di_score
+
+# convert to pdata.frame
+panel_data <- pdata.frame(panel_data1, index = c("country_code", "year"))
+pdim(panel_data) # check panel dimensions
+```
+
+# Model 1: SPI ~ SDG + DI + Controls
+```{r}
+model1 <- plm(spi_comp ~ sdg_overall 
+              + plm::lag(sdg_overall, 1) 
+              + plm::lag(sdg_overall, 2) 
+              + di_var 
+              + plm::lag(di_var, 1) 
+              #+ plm::lag(di_var, 2) 
+              + log_gdppc, 
+              data = panel_data, 
+              model = "within", 
+              effect = "twoways")
+summary(model1, vcov = vcovHC(model1, cluster = "group", type = "HC1"))
+```
+
+# Model 2: SDG ~ SPI + DI + Controls
+```{r}
+model2 <- plm(sdg_overall ~ 
+              + di_var 
+              + plm::lag(di_var, 1) 
+              + plm::lag(di_var, 2) 
+              + spi_comp 
+              + plm::lag(spi_comp, 1) 
+              + plm::lag(spi_comp, 2) 
+              + log_gdppc,
+              data = panel_data, 
+              model = "within", 
+              effect = "twoways")
+summary(model2, vcov = vcovHC(model2, cluster = "group", type = "HC1"))
+```
+
+
+## Testing with Missigness Data 
+```{r}
+# load data with missigness indicators
+missigness_data <- read.csv("data/input_data/R_proj_missingness_dataset/full_Rproj_data.csv")
+
+# select relevant data and arrange
+panel_data1_missingness <- missigness_data %>%
+  dplyr::select(country_name, country_code, year, elect_dem, log_gdppc, prop_sdg_missing, electric_access, rural_pop_pct, rd_expenditure_pct, regime_type_2, regch_event) %>%
+  dplyr::arrange(country_code, year)
+
+# merge spi_comp into the missigness data
+panel_data1_missingness <- panel_data1_missingness %>%
+  left_join(panel_data1 %>% dplyr::select(country_code, year, sdg_overall, spi_comp, di_score), by = c("country_code", "year"))
+
+# pdata.frame conversion
+panel_data_missingness <- pdata.frame(panel_data1_missingness, index = c("country_code", "year"))
+pdim(panel_data) # check panel dimensions
+
+# Model 4: missingness_SDG ~ SPI + DI + Controls (Random Effects)
+model4 <- plm(prop_sdg_missing ~ 
+              + di_score 
+              + plm::lag(di_score, 1) 
+              + plm::lag(di_score, 2) 
+              #+ spi_comp 
+              #+ plm::lag(spi_comp, 1) 
+              #+ plm::lag(spi_comp, 2)
+              + log_gdppc,
+              data = panel_data_missingness, 
+              model = "within",
+              effect = "twoways")
+summary(model4, vcov = vcovHC(model4, cluster = "group", type = "HC1"))
+
+```

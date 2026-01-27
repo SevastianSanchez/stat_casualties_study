@@ -1,0 +1,479 @@
+---
+title: "Descriptive Statistics: Variables and Datasets"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: paper
+    highlight: tango
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE,
+                     fig.width = 10, fig.height = 6)
+```
+# Descriptive Statistics and Visualizations
+This R Markdown document provides descriptive statistics and visualizations for the main variables in the thesis dataset. It includes coverage statistics, summary statistics, and visualizations of key variables, grouped by regime type and Gross National Income (GNI) level. The analysis focuses on the relationship between statistical capacity, regime type, and sustainable development indicators.
+
+# Table of Contents
+- [1. Load Data and Packages](#1-load-data-and-packages)
+- [2. Dataset Coverage](#2-dataset-coverage)
+  - [2.1 Overall Dataset Size](#21-overall-dataset-size)
+  - [2.2 Coverage by Variable (full dataset)](#22-coverage-by-variable-full-dataset)
+  - [2.3 Coverage by Year (full dataset)](#23-coverage-by-year-full-dataset)
+  - [2.4 Coverage by Variable (final dataset)](#24-coverage-by-variable-final-dataset)
+  - [2.5 Coverage by Year (final dataset)](#25-coverage-by-year-final-dataset)
+- [3. Descriptive Statistics (Filtered Data)](#3-descriptive-statistics-filtered-data)
+  - [3.1 Summary Statistics for Key Variables (All and subgrouped)](#31-summary-statistics-for-key-variables-all-and-subgrouped)
+  - [3.2 Frequency Table of Country Regime Change Status](#32-frequency-table-of-country-regime-change-status)
+- [4. Visualizations](#4-visualizations)
+  - [4.1 Distributions of Key Variables](#41-distributions-of-key-variables)
+  - [4.2 Boxplots by Regime Type](#42-boxplots-by-regime-type)
+- [5. Summary Table of Findings](#5-summary-table-of-findings)
+
+# 1. Load Data and Packages
+
+```{r}
+# set working directory 
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+
+# Load all packages from the packages.R file
+source("packages.R")
+
+# Load the merged (filtered, final) and merged_full (unfiltered, full) datasets
+merged_full <- read_csv("data/Main CSV Outputs/merged_full_NEW.csv") # full unfiltered dataset
+merged <- read_csv("data/Main CSV Outputs/comp1_data.csv") # filtered dataset
+
+# regime type variable (based on EIU DI data)
+merged <- merged %>%
+  mutate(di_reg_type_2 = factor(case_when(
+    di_score < 5 ~ 0,  # Autocracy
+    di_score >= 5 ~ 1,  # Democracy
+    TRUE ~ NA_integer_
+  )))
+
+# Define key variables for analysis
+key_vars <- c("sdg_overall", "spi_comp", "sci_overall", "di_score", 
+              "log_gdppc", "gdp_pc")
+```
+
+*SDG VARIABLE NOTE: While all member states have a country profile, only those with less than 20% missing data are ranked in the SDG Index, resulting in 167 countries being ranked in the 2024 report.*
+
+# 2. Dataset Coverage
+
+## Coverage Statistics Function 
+```{r}
+# Function to get coverage statistics for a variable
+get_coverage <- function(data, var_name) {
+  total_obs <- sum(!is.na(data[[var_name]]))
+  total_countries <- length(unique(data$country_code[!is.na(data[[var_name]])]))
+  total_years <- length(unique(data$year[!is.na(data[[var_name]])]))
+  missing_obs <- sum(is.na(data[[var_name]]))
+  missing_percent <- round(missing_obs / nrow(data) * 100, 2)
+  
+  return(data.frame(
+    Variable = var_name,
+    Observations = total_obs,
+    Countries = total_countries,
+    Years = total_years,
+    Missing = missing_obs,
+    Missing_Percent = missing_percent
+  ))
+}
+```
+
+
+## 2.1 Coverage by Variable (full dataset)
+
+```{r}
+# coverage stats for all key variables
+coverage_stats <- bind_rows(lapply(key_vars, function(var) get_coverage(merged_full, var)))
+
+### TABLE ###
+coverage_table <- kable(coverage_stats, 
+      caption = "Coverage Statistics for Key Variables (unfiltered)",
+      col.names = c("Variable", "Observations", "Countries", "Years", "Missing Values", "Missing (%)"),
+      align = c('l', rep('c', 5)),
+      booktabs = TRUE) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman", font_size = 12, "basic") %>%
+  row_spec(0, bold = FALSE, align = "c") %>%
+  column_spec(1, bold = FALSE)
+
+# Save the table as HTML
+save_kable(coverage_table, file = "descriptive_stats_n_cross-tabulation/figures/full_coverage_stats_table.html")
+
+# Display the table in the document
+coverage_table
+```
+
+## 2.2 Coverage by Year (full dataset)
+
+```{r}
+# variable coverage by year
+year_coverage <- merged_full %>%
+  group_by(year) %>%
+  summarise(across(all_of(key_vars), ~sum(!is.na(.)), .names = "{.col}")) %>%
+  arrange(year)
+
+### TABLE ###
+year_coverage_table <- kable(year_coverage, 
+      caption = "Number of Countries Covered by Year for Key Variables (unfiltered)",
+      booktabs = TRUE,
+      align = c('l', rep('c', length(key_vars)))) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman", font_size = 12, "basic") %>%
+  row_spec(0, bold = FALSE, align = "c") %>%
+  column_spec(1, bold = FALSE)
+
+# Save the table as HTML
+save_kable(year_coverage_table, file = "descriptive_stats_n_cross-tabulation/figures/full_year_coverage_table.html")
+
+# Display the table in the document
+year_coverage_table
+```
+
+## 2.3 Coverage by Variable (final dataset)
+
+```{r}
+# coverage stats for all key variables
+coverage_stats <- bind_rows(lapply(key_vars, function(var) get_coverage(merged, var)))
+
+### TABLE ###
+coverage_table <- kable(coverage_stats, 
+      caption = "Coverage Statistics for Key Variables (filtered)",
+      col.names = c("Variable", "Observations", "Countries", "Years", "Missing Values", "Missing (%)"),
+      align = c('l', rep('c', 5)),
+      booktabs = TRUE) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman", font_size = 12, "basic") %>%
+  row_spec(0, bold = FALSE, align = "c") %>%
+  column_spec(1, bold = FALSE)
+
+# Save the table as HTML
+save_kable(coverage_table, file = "descriptive_stats_n_cross-tabulation/figures/final_coverage_stats_table.html")
+
+# Display the table in the document
+coverage_table
+```
+
+## 2.4 Coverage by Year (final dataset)
+
+```{r}
+# variable coverage by year
+year_coverage <- merged %>%
+  group_by(year) %>%
+  summarise(across(all_of(key_vars), ~sum(!is.na(.)), .names = "{.col}")) %>%
+  arrange(year)
+
+### TABLE ###
+year_coverage_table <- kable(year_coverage, 
+      caption = "Number of Countries Covered by Year for Key Variables (filtered)",
+      booktabs = TRUE,
+      align = c('l', rep('c', length(key_vars)))) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman", font_size = 12, "basic") %>%
+  row_spec(0, bold = FALSE, align = "c") %>%
+  column_spec(1, bold = FALSE)
+
+# Save the table as HTML
+save_kable(year_coverage_table, file = "descriptive_stats_n_cross-tabulation/figures/final_year_coverage_table.html")
+
+# Display the table in the document
+year_coverage_table
+```
+
+## 2.5 Overall Dataset Size
+
+```{r}
+# Basic dimensions of the dataset
+cat("Total number of observations (rows):", nrow(merged_full), "\n")
+cat("Total number of variables (columns):", ncol(merged_full), "\n")
+cat("Year range:", min(merged_full$year, na.rm=TRUE), "to", max(merged_full$year, na.rm=TRUE), "\n")
+cat("Total number of countries:", length(unique(merged_full$country_code)), "\n")
+```
+
+# 3. Descriptive Statistics (Filtered Data)
+
+## 3.1 Summary Statistics for Key Variables (All and subgrouped)
+*Building function for sub-grouping in the future*
+```{r}
+# Define and list variables in desired order
+key_vars <- c("sdg_overall", "spi_comp", "sci_overall", "di_score", "gdp_pc", "log_gdppc")
+
+# Apply subgroup filter for GNI level
+gni_filter <- "all" # specify desired GNI level (e.g., LIC, LMIC, UMIC, HIC, all)
+
+# Apply subgroup filter level for regime type 
+regime_filter <- "all" # specify desired regime type (e.g., all, Democracy, Autocracy)
+
+# Generating summary statistics for key variables
+merged_stats <- merged %>%
+  filter(
+    case_when(
+      gni_filter == "HIC" ~ income_level == 'H', 
+      gni_filter == "UMIC" ~ income_level == 'UM',
+      gni_filter == "LMIC" ~ income_level == 'LM',
+      gni_filter == "LIC" ~ income_level == 'L',
+      gni_filter == "all" ~ TRUE,          # Keep all observations
+      TRUE ~ FALSE                         # Exclude invalid filter options
+    )
+  ) %>% 
+  filter(
+    case_when(
+      regime_filter == "autocracy" ~ di_reg_type_2 == 0,
+      regime_filter == "democracy" ~ di_reg_type_2 == 1,
+      regime_filter == "all" ~ TRUE,       # Keep all observations
+      TRUE ~ FALSE # filter all else 
+    )
+  ) %>%
+  select(all_of(key_vars)) %>%
+  summarize(across(everything(), 
+                   list(
+                     min = ~min(., na.rm = TRUE),
+                     q1 = ~quantile(., 0.25, na.rm = TRUE),
+                     median = ~median(., na.rm = TRUE),
+                     mean = ~mean(., na.rm = TRUE),
+                     sd = ~sd(., na.rm = TRUE),
+                     q3 = ~quantile(., 0.75, na.rm = TRUE),
+                     max = ~max(., na.rm = TRUE),
+                     n = ~sum(!is.na(.))
+                     )))
+
+# Reshape the data for better presentation
+merged_stats_long <- merged_stats %>%
+  pivot_longer(cols = everything(),
+               names_to = c("variable", "stat"),
+               names_pattern = "(.*)_(.*)",
+               values_to = "value") %>%
+  pivot_wider(names_from = stat, values_from = value) %>%
+  arrange(match(variable, key_vars))
+
+# Create the table with APA styling and no caption number
+summary_stats_table <- kable(merged_stats_long, 
+      caption = paste("Descriptive Statistics for Key Variables,", "Subgrouped to:", if(gni_filter == "all"){"All GNI Levels"} else {gni_filter}, "and", if(regime_filter == "all"){"All Regime Types"} else {regime_filter}),
+      col.names = c("Variable", "Min", "1st Qu", "Median", "Mean", "SD", "3rd Qu", "Max", "N"),
+      booktabs = TRUE,
+      digits = 2,
+      align = c('l', rep('c', 8))) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman", font_size = 12) %>%
+  row_spec(0, bold = FALSE, align = "c") %>%
+  column_spec(1, bold = FALSE)
+
+# Save the table as HTML
+save_kable(summary_stats_table, 
+file = paste("descriptive_stats_n_cross-tabulation/figures/summary", if(gni_filter == "all"){"_all_gni"} else {paste0("_", gni_filter)}, if(regime_filter == "all"){"_all_regime"} else {paste0("_", regime_filter)}, sep = "", ".html"))
+
+# Display the table in the document
+summary_stats_table
+```
+
+# 4. Visualizations
+
+## 4.1 Distributions of Key Variables
+
+```{r fig.height=8}
+# Set line widths for mean and median lines
+med_linewidth <- 0.6
+mean_linewidth <- 0.5
+
+# Create histograms for key index variables using ggplot2
+p1 <- ggplot(merged, aes(x = spi_comp)) +
+  geom_histogram(bins = 20, fill = "lightblue", color = "white", alpha = 0.7) +
+  geom_vline(xintercept = median(merged$spi_comp, na.rm = TRUE), 
+             color = "red", linewidth = med_linewidth, linetype = "dashed") +
+  geom_vline(xintercept = mean(merged$spi_comp, na.rm = TRUE), 
+             color = "black", linewidth = mean_linewidth) +
+  labs(title = "Statistical Performance Index (2016-2023)",
+       x = "Composite Score (0-100)",
+       y = "Frequency (country-years)") +
+  theme_minimal()
+  
+p2 <- ggplot(merged, aes(x = sci_overall)) +
+  geom_histogram(bins = 20, fill = "lightgrey", color = "white", alpha = 0.7) +
+  geom_vline(xintercept = median(merged$sci_overall, na.rm = TRUE), 
+             color = "red", linewidth = med_linewidth, linetype = "dashed") +
+  geom_vline(xintercept = mean(merged$sci_overall, na.rm = TRUE), 
+             color = "black", linewidth = mean_linewidth) +
+  labs(title = "Statistical Capacity Index (2004-2020)",
+       x = "Composite Score (0-100)",
+       y = "Frequency (country-years)") +
+  theme_minimal()
+
+p3 <- ggplot(merged, aes(x = di_score)) +
+  geom_histogram(bins = 20, fill = "lightpink", color = "white", alpha = 0.7) +
+  geom_vline(xintercept = median(merged$di_score, na.rm = TRUE), 
+             color = "red", linewidth = med_linewidth, linetype = "dashed") +
+  geom_vline(xintercept = mean(merged$di_score, na.rm = TRUE), 
+             color = "black", linewidth = mean_linewidth) +
+  labs(title = "Democracy Index (2006-2023)",
+       x = "Score (0-10)",
+       y = "Frequency (country-years)") +
+  theme_minimal()
+
+p4 <- ggplot(merged, aes(x = sdg_overall)) +
+  geom_histogram(bins = 20, fill = "lightgreen", color = "white", alpha = 0.7) +
+  geom_vline(xintercept = median(merged$sdg_overall, na.rm = TRUE), 
+             color = "red", linewidth = med_linewidth, linetype = "dashed") +
+  geom_vline(xintercept = mean(merged$sdg_overall, na.rm = TRUE), 
+             color = "black", linewidth = mean_linewidth) +
+  labs(title = "SDG Index (2004-2023)",
+       x = "Composite Score (0-100)",
+       y = "Frequency (country-years)") +
+  theme_minimal()
+
+# Combine plots using patchwork
+(p1 + p2) / (p3 + p4)
+
+# Save combined plot
+ggsave("descriptive_stats_n_cross-tabulation/figures/hist_combined.png", (p1 + p2) / (p3 + p4), width = 10, height = 8, dpi = 300)
+```
+
+### GDP & Log(GDP) Distributions
+*On-hand if needed*
+```{r}
+p5 <- ggplot(merged, aes(x = gdp_pc)) +
+  geom_histogram(bins = 20, fill = "darkgreen", color = "white", alpha = 0.7) +
+  geom_vline(xintercept = median(merged$di_score, na.rm = TRUE), 
+             color = "red", linewidth = med_linewidth, linetype = "dashed") +
+  geom_vline(xintercept = mean(merged$di_score, na.rm = TRUE), 
+             color = "black", linewidth = mean_linewidth) +
+  labs(title = "GDP Per Capita (2006-2023)",
+       x = "Pre-transformed (USD)",
+       y = "Frequency (country-years)") +
+  theme_minimal()
+
+p6 <- ggplot(merged, aes(x = log_gdppc)) +
+  geom_histogram(bins = 20, fill = "darkgrey", color = "white", alpha = 0.7) +
+  geom_vline(xintercept = median(merged$sdg_overall, na.rm = TRUE), 
+             color = "red", linewidth = med_linewidth, linetype = "dashed") +
+  geom_vline(xintercept = mean(merged$sdg_overall, na.rm = TRUE), 
+             color = "black", linewidth = mean_linewidth) +
+  labs(title = "Log of GDP Per Capita (2004-2023)",
+       x = "Transformed (log(USD))",
+       y = "Frequency (country-years)") +
+  theme_minimal()
+
+# Combine GDP plots using patchwork
+gdp_combined <- (p5 + p6) 
+#+ plot_layout(ncol = 2, guides = "collect") 
+#+ plot_annotation(title = "GDP Per Capita Distributions", theme = theme(plot.title = element_text(hjust = 0.5)))
+```
+
+
+## 4.2 Boxplots by Regime Type
+
+```{r fig.height=8}
+# Create boxplots for variables split by regime type using ggplot2
+
+# Add factor for regime type with proper labels
+merged <- merged %>%
+  mutate(regime_type_factor = factor(regime_type_2, 
+                                    levels = c(0, 1),
+                                    labels = c("Autocracy", "Democracy"))) %>% 
+  # filter out NAs for regime type 
+  filter(!is.na(regime_type_factor))
+
+b1 <- ggplot(merged, aes(x = regime_type_factor, y = spi_comp, fill = regime_type_factor)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("salmon", "skyblue")) +
+  labs(title = "SPI Distribution by Regime Type",
+       x = NULL,
+       y = "Composite Score (0-100)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+b2 <- ggplot(merged, aes(x = regime_type_factor, y = sci_overall, fill = regime_type_factor)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("salmon", "skyblue")) +
+  labs(title = "SCI Distribution by Regime Type",
+       x = NULL,
+       y = "Composite Score (0-100)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+b3 <- ggplot(merged, aes(x = regime_type_factor, y = log_gdppc, fill = regime_type_factor)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("salmon", "skyblue")) +
+  labs(title = "Log of GDP Per Capita by Regime Type",
+       x = NULL,
+       y = "Transformed Log(USD)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+b4 <- ggplot(merged, aes(x = regime_type_factor, y = sdg_overall, fill = regime_type_factor)) +
+  geom_boxplot() +
+  scale_fill_manual(values = c("salmon", "skyblue")) +
+  labs(title = "SDG Index by Regime Type",
+       x = NULL,
+       y = "Composite Score (0-100)") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+# Combine plots using patchwork
+boxplot_combined <- (b1 + b2) / (b3 + b4)
+boxplot_combined
+
+# Save combined plot
+ggsave("descriptive_stats_n_cross-tabulation/figures/boxplots_combined.png", boxplot_combined, width = 10, height = 8, dpi = 300)
+```
+
+
+# 5. Summary Table of Findings
+- removing di_score from summary table as it is not a key variable in this particular analysis
+- include counts of democracies and autocracies in the summary table
+```{r}
+# Create a summary table of key findings
+summary_findings <- data.frame(
+  Variable = c("SDG Composite", "SPI Composite", "SCI Composite", "Democracy Index"),
+  Democracy_Mean = c(
+    mean(merged$sdg_overall[merged$regime_type_2 == 1], na.rm = TRUE),
+    mean(merged$spi_comp[merged$regime_type_2 == 1], na.rm = TRUE),
+    mean(merged$sci_overall[merged$regime_type_2 == 1], na.rm = TRUE),
+    mean(merged$di_score[merged$regime_type_2 == 1], na.rm = TRUE)
+  ),
+  Autocracy_Mean = c(
+    mean(merged$sdg_overall[merged$regime_type_2 == 0], na.rm = TRUE),
+    mean(merged$spi_comp[merged$regime_type_2 == 0], na.rm = TRUE),
+    mean(merged$sci_overall[merged$regime_type_2 == 0], na.rm = TRUE),
+    mean(merged$di_score[merged$regime_type_2 == 0], na.rm = TRUE)
+  ),
+  Difference = c(
+    mean(merged$sdg_overall[merged$regime_type_2 == 1], na.rm = TRUE) - 
+      mean(merged$sdg_overall[merged$regime_type_2 == 0], na.rm = TRUE),
+    mean(merged$spi_comp[merged$regime_type_2 == 1], na.rm = TRUE) - 
+      mean(merged$spi_comp[merged$regime_type_2 == 0], na.rm = TRUE),
+    mean(merged$sci_overall[merged$regime_type_2 == 1], na.rm = TRUE) - 
+      mean(merged$sci_overall[merged$regime_type_2 == 0], na.rm = TRUE),
+    mean(merged$di_score[merged$regime_type_2 == 1], na.rm = TRUE) - 
+      mean(merged$di_score[merged$regime_type_2 == 0], na.rm = TRUE)
+  ),
+  Percent_Difference = c(
+    (mean(merged$sdg_overall[merged$regime_type_2 == 1], na.rm = TRUE) / 
+      mean(merged$sdg_overall[merged$regime_type_2 == 0], na.rm = TRUE) - 1) * 100,
+    (mean(merged$spi_comp[merged$regime_type_2 == 1], na.rm = TRUE) / 
+      mean(merged$spi_comp[merged$regime_type_2 == 0], na.rm = TRUE) - 1) * 100,
+    (mean(merged$sci_overall[merged$regime_type_2 == 1], na.rm = TRUE) / 
+      mean(merged$sci_overall[merged$regime_type_2 == 0], na.rm = TRUE) - 1) * 100,
+    (mean(merged$di_score[merged$regime_type_2 == 1], na.rm = TRUE) / 
+      mean(merged$di_score[merged$regime_type_2 == 0], na.rm = TRUE) - 1) * 100
+  )
+)
+
+# Format and display the summary table with APA styling and no caption number
+summary_findings_table <- kable(summary_findings, 
+      caption = "Summary of Differences Between Democracies and Autocracies",
+      col.names = c("Variable", "Democracy Mean", "Autocracy Mean", "Absolute Difference", "% Difference"),
+      booktabs = TRUE,
+      digits = 2,
+      align = c('l', rep('c', 4))) %>%
+  kable_classic(full_width = FALSE, html_font = "Times New Roman", font_size = 12, "basic") %>%
+  row_spec(0, bold = FALSE, align = "c") %>%
+  column_spec(1, bold = FALSE) %>%
+  add_footnote("Note: Positive differences indicate higher values in democracies compared to autocracies.", notation = "none") %>%
+  footnote(general_title = "", 
+           general = "Source: Author's calculations using filtered dataset.")
+
+# Save the table as HTML
+#save_kable(summary_findings_table, file = "descriptive_stats_n_cross-tabulation/figures/summary_findings_table.html")
+
+# Display the table in the document
+summary_findings_table
+```

@@ -1,0 +1,32 @@
+---
+title: "Interaction_models"
+output: html_document
+---
+
+```{r}
+# set working directory
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+
+#load libraries/packages
+source("packages.R")
+
+# load data
+source("Comp2_panel_wrangling.R")
+```
+
+# Interaction Models
+```{r}
+
+
+# baseline model
+FE_all <- plm(formula = sci_overall ~ di_score + dplyr::lag(di_score, 1) + dplyr::lag(di_score, 2) + log_gdppc + income_level_recoded,
+              model = "within", 
+              index = c("country_code", "year"),
+              data = panel_data, 
+              subset = group,
+              effect = "twoways")
+summary(FE_all)
+summary(FE_all, vcov = vcovHC(FE_all, cluster = "group", type = "HC1"))
+
+```
+

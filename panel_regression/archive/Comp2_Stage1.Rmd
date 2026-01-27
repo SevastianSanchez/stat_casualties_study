@@ -1,0 +1,600 @@
+---
+title: "Component 2, Stage 1"
+author: "Sevastian Sanchez"
+date: "`r Sys.Date()`"
+output:
+  pdf_document: 
+    toc: no
+    toc_depth: '3'
+    number_sections: yes
+  html_document:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: yes
+    highlight: tango
+    theme: default
+    fig_caption: yes
+    df_print: tibble
+  word_document: default
+  urlcolor: blue
+---
+```{r}
+knitr::opts_chunk$set(
+  echo = TRUE, warning = FALSE, message = FALSE,
+  tidy = TRUE, tidy.opts = list(width.cutoff = 60) 
+)
+```
+
+# Set up
+```{r}
+# set working directory
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+
+#load libraries/packages
+source("packages.R")
+
+# load data
+source("Comp2_panel_wrangling.R")
+panel_data1 <- panel_data %>% 
+  dplyr::select(country_name, country_code, year, spi_comp, di_score, log_gdppc, income_level_recoded, di_score_reverse) %>%
+  dplyr::arrange(country_code, year)
+
+# how many countries 
+length(unique(panel_data1$country_code)) 
+
+# check dimensions
+dim(panel_data1) 
+
+# testing dataframes for sensitivity of results 
+# panel_data <- panel_data_spi
+```
+*sensitivity analysis [REVISE -USING PLM::LAGs]*
+Basing analysis of dataset sensitivity on FE model of the second order (fe_spi_di_L2)
+
+- Dataset = panel_data_comp1_data, 1336 obs, 167 countries, FE models (di_score_lag2) showed p = 0.07598 (marginally significant)
+
+- Dataset = panel_data_sdg,  1336 obs, 167 countries, FE models (di_score_lag2) showed p = 0.07598 (marginally significant)
+
+- Dataset = panel_data_exclusive, 1296 obs, 162 countries, FE models (di_score_lag2) showed p = 0.079 (marginally significant)
+
+- Dataset = panel_data_spi, 1392 obs, 174 countries, FE models (di_score_lag2) showed p = 0.1497 (not significant)
+
+# Stage 1 Models:
+ols_spi_di
+ols_spi_di_L1
+ols_spi_di_L2
+
+fd_spi_di
+fd_spi_di_L1
+fd_spi_di_L2
+
+fe_spi_di
+fe_spi_di_L1
+fe_spi_di_L2
+
+## Converting to panel data frame
+```{r}
+panel_data <- pdata.frame(panel_data1, index = c("country_code", "year"))
+pdim(panel_data) # check panel dimensions
+```
+
+# 1.1) POLS [Stage 1]: SPI ~ DI
+The effect of democracy on SPI Performance
+```{r}
+# Contemporaneous Effect: SPI ~ DI
+ols_spi_di <- plm(
+  formula = spi_comp ~ di_score 
+  + log_gdppc 
+  #+ factor(income_level_recoded) 
+  + factor(year), 
+  model = "pooling", 
+  data = panel_data)
+summary(ols_spi_di, vcov = vcovHC(ols_spi_di, cluster = "group", type = "HC1"))
+
+# Adding Lag1: SPI ~ DI
+ols_spi_di_L1 <- plm(
+  formula = spi_comp ~ di_score + plm::lag(di_score, 1) 
+  + log_gdppc 
+  #+ factor(income_level_recoded) 
+  + factor(year), 
+  model = "pooling", 
+  data = panel_data)
+summary(ols_spi_di_L1, vcov = vcovHC(ols_spi_di_L1, cluster = "group", type = "HC1"))
+
+# Adding Lag2: SPI ~ DI [REPORTED]
+ols_spi_di_L2 <- plm(
+  formula = spi_comp ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2)
+  + log_gdppc 
+  #+ factor(income_level_recoded) 
+  + factor(year), 
+  model = "pooling", 
+  data = panel_data)
+summary(ols_spi_di_L2, vcov = vcovHC(ols_spi_di_L2, cluster = "group", type = "HC1"))
+```
+
+## POLS Scatterplots
+General relationship between SPI and DI
+```{r}
+# Contemporaneous Relationship: SPI ~ DI
+spi_di_s1_scatter <- ggplot(panel_data1, aes(x = di_score, y = spi_comp)) + 
+  geom_point(color = "steelblue4", size = 1, alpha = 0.65) +
+  geom_smooth(method = "lm", 
+              se = TRUE, color = "darkblue", size = 1) +
+  labs(
+    title = "Effect of Democracy Levels on Statistical Capacity",
+    x = "Democracy Index (0-10 Scale)",
+    y = "SPI Composite (0-100 Scale)"
+  ) +
+  theme_minimal()+
+  theme(plot.title = element_text(size = 14))+
+  ylim(20, 100)
+
+# Save to specific folder
+#ggsave("figures/stage_1_n_2_scatterplots/spi_di_s1_scatterplot.png", spi_di_s1_scatter, width = 6, height = 8)
+
+# Contemporaneous Relationship: SPI ~ DI_Reversed
+spi_di_rev_scatter <- ggplot(panel_data1, aes(x = di_score_reverse, y = spi_comp)) + 
+  geom_point(color = "steelblue4", size = 1, alpha = 0.65) +
+  geom_smooth(method = "lm", 
+              se = TRUE, color = "darkblue", size = 1) +
+  labs(
+    title = "Effect of Autocracy Levels on Statistical Capacity (reversed DI)",
+    x = "Democracy Index (0-10 Scale) [Higher = More Autocratic]",
+    y = "SPI Composite (0-100 Scale)"
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14))+
+  # adjust y axis to start from y = 10
+  ylim(20, 100)
+
+# Save to specific folder
+#ggsave("figures/stage_1_n_2_scatterplots/spi_di_rev_scatter.png", spi_di_rev_scatter, width = 6, height = 8)
+
+# side by side comparison using patchwork 
+library(patchwork)
+spi_di_s1_scatter + spi_di_rev_scatter + plot_layout(ncol = 2)
+#ggsave("figures/stage_1_n_2_scatterplots/spi_di_s1_scatterplots.png", width = 12, height = 8)
+```
+
+## POLS Summary Table
+```{r eval=FALSE, include=FALSE}
+# --- POLS MODELS TABLE ---
+
+# Extracting robust standard errors for the two POLS models
+rob_se_pols <- list(
+  coeftest(ols_spi_di, vcov = vcovHC(ols_spi_di, cluster = "group", type = "HC1"))[, 2],
+  coeftest(ols_spi_di_L1, vcov = vcovHC(ols_spi_di_L1, cluster = "group", type = "HC1"))[, 2],
+  coeftest(ols_spi_di_L2, vcov = vcovHC(ols_spi_di_L2, cluster = "group", type = "HC1"))[, 2]
+)
+
+# Generate the stargazer table for POLS models
+stargazer(
+  ols_spi_di, ols_spi_di_L1, ols_spi_di_L2,
+  se = rob_se_pols,
+  type = "html",
+  out = "component_2/figures/stage1/s1_pols_lags.html",
+  title = "Stage I Models: Pooled OLS (Current and Lagged Effects)",
+  align = TRUE,
+  dep.var.labels = "SPI Overall Score",
+  column.labels = c("Contemporaneous", "Lag 1", "Lag 2"),
+  covariate.labels = c("DI Composite", "Lagged DI (t-1)", "Lagged DI (t-2)", "Log(GDPper-capita)", "Intercept"),
+  report = "vcs*",
+  notes = "Robust standard errors clustered by country in parentheses",
+  omit = "factor\\(year\\)",
+  model.names = FALSE
+)
+```
+
+# 1.2) First Difference [Stage 1]: SPI ~ DI
+```{r}
+# Contemporaneous Effect: SPI ~ DI
+fd_spi_di <- plm(
+  formula = spi_comp ~ di_score 
+  + log_gdppc,
+  #+ factor(income_level_recoded),
+  data = panel_data, 
+  model = "fd"
+)
+summary(fd_spi_di, vcov = vcovHC(fd_spi_di, cluster = "group", type = "HC1"))
+
+# Adding Lag1: SPI ~ DI
+fd_spi_di_L1 <- plm(
+  formula = spi_comp ~ di_score + plm::lag(di_score, 1) 
+  + log_gdppc,
+  #+ factor(income_level_recoded),
+  data = panel_data, 
+  model = "fd"
+)
+summary(fd_spi_di_L1, vcov = vcovHC(fd_spi_di_L1, cluster = "group", type = "HC1"))
+
+# Adding Lag2: SPI ~ DI [REPORTED]
+fd_spi_di_L2 <- plm(
+  formula = spi_comp ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) 
+  + log_gdppc,
+  #+ factor(income_level_recoded),
+  data = panel_data, 
+  model = "fd"
+)
+summary(fd_spi_di_L2, vcov = vcovHC(fd_spi_di_L2, cluster = "group", type = "HC1"))
+
+# joint significance 
+# names(coef(fd_spi_di_L2)) # ensure correct names 
+linearHypothesis(
+  fd_spi_di_L2,
+  c("di_score = 0", "plm::lag(di_score, 1) = 0", "plm::lag(di_score, 2) = 0"),
+  vcov. = vcovHC(fd_spi_di_L2, cluster = "group", type = "HC1")
+)
+
+# cumulative effects 
+linearHypothesis(
+  fd_spi_di_L2,
+  c("di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) = 0"),
+  vcov. = vcovHC(fd_spi_di_L2, cluster = "group", type = "HC1")
+)
+
+# CI for all variables (L2 model)
+coef <- coef(fd_spi_di_L2)
+se <- sqrt(diag(vcovHC(fd_spi_di_L2, cluster = "group", type = "HC1")))  # Get standard errors
+crit_value <- qt(0.975, df = nobs(fd_spi_di_L2)-length(coef(fd_spi_di_L2)))
+ci_low <- coef - crit_value * se
+ci_high <- coef + crit_value * se
+cbind(ci_low, ci_high)
+```
+**Result:** The joint significance tests for FD show that the DI variables are jointly significant in explaining changes in SPI overall scores (Chisq = 25.898, p = 1.002e-05). This suggests that shifts in democracy levels may have a meaningful immediate impact on statistical capacity (SPI) performance when considering both current and lagged effects.
+
+In terms of *cumulative impact*, based on the FD model and panel data, there is no detectable total impact of changes in di_score (at current, lag 1, or lag 2) on SPI —over these periods (stat = 2.5181 p = 0.1125)
+
+## First Difference Summary Table
+```{r eval=FALSE, include=FALSE}
+# --- FD MODELS TABLE ---
+# extracting robust standard errors for the three FD models
+rob_se_fd <- list(
+  coeftest(fd_spi_di, vcov = vcovHC(fd_spi_di, cluster = "group", type = "HC1"))[, 2],
+  coeftest(fd_spi_di_L1, vcov = vcovHC(fd_spi_di_L1, cluster = "group", type = "HC1"))[, 2],
+  coeftest(fd_spi_di_L2, vcov = vcovHC(fd_spi_di_L2, cluster = "group", type = "HC1"))[, 2]
+)
+# stargazer table for FD models
+stargazer(
+  fd_spi_di, fd_spi_di_L1, fd_spi_di_L2,
+  se = rob_se_fd,
+  type = "html",
+  out = "component_2/figures/stage1/s1_fd_lags.html",
+  title = "Stage I: Static & Lagged First Difference (SPI ~ DI)",
+  align = TRUE,
+  dep.var.labels = "SPI Overall Score",
+  column.labels = c("Contemporaneous", "Lag 1", "Lag 2"),
+  covariate.labels = c("DI Composite", "Lagged DI (t-1)", "Lagged DI (t-2)", "Log(GDPper-capita)", "Intercept"),
+  report = "vcs*",
+  notes = "Robust standard errors clustered by country in parentheses",
+  omit = "factor\\(year\\)",
+  model.names = FALSE
+)
+```
+
+## First Difference Error Bar Visualization 
+```{r}
+# Extract coefficients and robust standard errors from the FD model
+fd_spi_di_L2_results <- summary(fd_spi_di_L2, vcov = vcovHC(fd_spi_di_L2, cluster = "group", type = "HC1"))
+# Create a data frame for visualization
+coef_fd_df <- data.frame(
+  term = rownames(fd_spi_di_L2_results$coefficients),
+  estimate = fd_spi_di_L2_results$coefficients[, "Estimate"],
+  std.error = fd_spi_di_L2_results$coefficients[, "Std. Error"]
+)
+# Create a ggplot error bar chart
+ebar_fd <- ggplot(coef_fd_df, aes(x = term, y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error), width = 0.2) +
+  labs(title = "Static & Lagged First Difference (SPI~DI)", x = NULL, y = "Coefficient Estimate") +
+  theme_minimal() +
+  coord_flip() +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "steelblue") +
+  scale_x_discrete(labels = c("di_score" = "Democracy (DI)", 
+                              "plm::lag(di_score, 1)" = "Lagged DI (t-1)", 
+                              "plm::lag(di_score, 2)" = "Lagged DI (t-2)", 
+                              "log_gdppc" = "Log(GDP per capita)",
+                              "(Intercept)" = "Intercept"
+                              ),
+                   limits = c(
+                   "(Intercept)",
+                   "log_gdppc",
+                    "plm::lag(di_score, 2)",
+                    "plm::lag(di_score, 1)",
+                    "di_score"
+                 ))
+ebar_fd
+
+# Save the plot
+#ggsave("component_2/figures/stage1/error_bar_fd_spi_di_L2.png", ebar_fd, width = 10, height = 6)
+
+```
+
+# 1.3) Fixed Effects [Stage 1]: SPI ~ DI
+```{r}
+# Contemporaneous Effect: SPI ~ DI 
+fe_spi_di <- plm(
+  formula = spi_comp ~ di_score 
+  + log_gdppc 
+  #+ factor(income_level_recoded) 
+  + factor(year),
+  data = panel_data,
+  model = "within")
+summary(fe_spi_di, vcov = vcovHC(fe_spi_di, cluster = "group", type = "HC1"))
+
+# Adding Lag1: SPI ~ DI
+fe_spi_di_L1 <- plm(
+  formula = spi_comp ~ di_score + plm::lag(di_score, 1) 
+  + log_gdppc 
+  #+ factor(income_level_recoded) 
+  + factor(year),
+  data = panel_data,
+  model = "within")
+summary(fe_spi_di_L1, vcov = vcovHC(fe_spi_di_L1, cluster = "group", type = "HC1"))
+
+# Adding Lag2: SPI ~ DI [REPORTED]
+fe_spi_di_L2 <- plm(
+  formula = spi_comp ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) 
+  + log_gdppc 
+  #+ factor(income_level_recoded) 
+  + factor(year),
+  data = panel_data,
+  model = "within")
+summary(fe_spi_di_L2, vcov = vcovHC(fe_spi_di_L2, cluster = "group", type = "HC1"))
+
+# CI for all variables (L2 model)
+coef <- coef(fe_spi_di_L2)
+se <- sqrt(diag(vcovHC(fe_spi_di_L2, cluster = "group", type = "HC1")))  # Get standard errors
+crit_value <- qt(0.975, df = nobs(fe_spi_di_L2)-length(coef(fe_spi_di_L2)))
+ci_low <- coef - crit_value * se
+ci_high <- coef + crit_value * se
+cbind(ci_low, ci_high)
+
+# joint significance: is there an effect between these three variables? 
+linearHypothesis(
+  fe_spi_di_L2,
+  c("di_score = 0", "plm::lag(di_score, 1) = 0", "plm::lag(di_score, 2) = 0"),
+  vcov. = vcovHC(fe_spi_di_L2, cluster = "group", type = "HC1")
+)
+# ensure correct names 
+# names(coef(fe_spi_di_L2))
+
+# cumulative effects
+linearHypothesis(
+  fe_spi_di_L2,
+  c("di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) = 0"),
+  vcov. = vcovHC(fe_spi_di_L2, cluster = "group", type = "HC1")
+)
+```
+**Results:** The joint significance tests for FE show no evidence that DI variables are jointly significant in explaining changes in SPI scores (Chisq = 3.5345, p = 0.3163). This suggests that DI may not have a meaningful incremental impact on SDG outcomes when considering both current and lagged effects.
+
+In terms of *cumulative impact*, based on the FE model and panel data, there is no detectable total impact of changes in di_score (at current, lag 1, or lag 2) on SPI —over these periods. (stat = 0.0107, p = 0.9175)
+
+## Fixed Effects Summary Table
+```{r eval=FALSE, include=FALSE}
+# --- FE MODELS TABLE ---
+# Extracting robust standard errors for the three FE models
+rob_se_fe <- list(
+  coeftest(fe_spi_di, vcov = vcovHC(fe_spi_di, cluster = "group", type = "HC1"))[, 2],
+  coeftest(fe_spi_di_L1, vcov = vcovHC(fe_spi_di_L1, cluster = "group", type = "HC1"))[, 2],
+  coeftest(fe_spi_di_L2, vcov = vcovHC(fe_spi_di_L2, cluster = "group", type = "HC1"))[, 2]
+)
+# stargazer table for FE models
+stargazer(
+  fe_spi_di, fe_spi_di_L1, fe_spi_di_L2,
+  se = rob_se_fe,
+  type = "html",
+  out = "component_2/figures/stage1/s1_fe_lags.html",
+  title = "Stage I Models: Static & Lagged Two-Way Fixed Effects (SPI ~ DI)",
+  align = TRUE,
+  dep.var.labels = "SPI Overall Score",
+  column.labels = c("Contemporaneous", "Lag 1", "Lag 2"),
+  covariate.labels = c("DI Composite", "Lagged DI (t-1)", "Lagged DI (t-2)", "Log(GDPper-capita)", "Intercept"),
+  report = "vcs*",
+  notes = "Robust standard errors clustered by country in parentheses",
+  omit = "factor\\(year\\)",
+  model.names = FALSE
+)
+```
+
+## Fixed Effects Error Bar Visualization 
+```{r}
+# Extract coefficients and robust standard errors from the FE model
+fe_spi_di_L2_results <- summary(fe_spi_di_L2, vcov = vcovHC(fe_spi_di_L2, cluster = "group", type = "HC1"))
+# Create a data frame for visualization
+coef_df <- data.frame(
+  term = rownames(fe_spi_di_L2_results$coefficients),
+  estimate = fe_spi_di_L2_results$coefficients[, "Estimate"],
+  std.error = fe_spi_di_L2_results$coefficients[, "Std. Error"]
+)
+# Create a ggplot error bar chart
+ebar_fe <- ggplot(coef_df, aes(x = term, y = estimate)) +
+  geom_point() +
+  geom_errorbar(aes(ymin = estimate - std.error, ymax = estimate + std.error), width = 0.2) +
+  labs(title = "Stage I: Static & Lagged Two-Way Fixed Effects (SPI ~ DI)", 
+       x = NULL, 
+       y = "Coefficient Estimate") +
+  theme_minimal() +
+  coord_flip() +  # Flip coordinates for better readability
+  geom_hline(yintercept = 0, linetype = "dashed", color = "steelblue") +
+  # re-labeling x variable lables 
+  scale_x_discrete(labels = c("di_score" = "Democracy (DI)", 
+                              "plm::lag(di_score, 1)" = "Lagged DI (t-1)", 
+                              "plm::lag(di_score, 2)" = "Lagged DI (t-2)", 
+                              "log_gdppc" = "Log(GDP per capita)", 
+                              "factor(year)2017" = "Year 2017",
+                              "factor(year)2018" = "Year 2018",
+                              "factor(year)2019" = "Year 2019",
+                              "factor(year)2020" = "Year 2020",
+                              "factor(year)2021" = "Year 2021",
+                              "factor(year)2022" = "Year 2022",
+                              "factor(year)2023" = "Year 2023",
+                              "Intercept" = "Intercept"
+                              ),
+                   limits = c(
+                   "(Intercept)",
+                   "factor(year)2023",
+                   "factor(year)2022",
+                   "factor(year)2021",
+                   "factor(year)2020",
+                   "factor(year)2019",
+                   "factor(year)2018",
+                   "factor(year)2017",
+                   "log_gdppc",
+                   "plm::lag(di_score, 2)",
+                   "plm::lag(di_score, 1)",
+                   "di_score"
+                 ))
+ebar_fe
+
+# Save the plot
+#ggsave("component_2/figures/stage1/error_bar_fe_spi_di_L2.png", ebar_fe, width = 10, height = 6)
+```
+
+### stargazer table for only lag2 models
+```{r eval=FALSE, include=FALSE}
+# stargazer table for only lag2 models
+stargazer(
+  ols_spi_di_L2, fd_spi_di_L2, fe_spi_di_L2,
+  se = list(
+    coeftest(ols_spi_di_L2, vcov = vcovHC(ols_spi_di_L2, cluster = "group", type = "HC1"))[, 2],
+    coeftest(fd_spi_di_L2, vcov = vcovHC(fd_spi_di_L2, cluster = "group", type = "HC1"))[, 2],
+    coeftest(fe_spi_di_L2, vcov = vcovHC(fe_spi_di_L2, cluster = "group", type = "HC1"))[, 2]
+  ),
+  type = "html",
+  title = "Stage I Models: Distributive Lagged Effects",
+  align = TRUE,
+  dep.var.labels = "SPI Overall Score",
+  column.labels = c("POLS", "FD", "FE"),
+  covariate.labels = c("DI Composite", "Lagged DI (t-1)", "Lagged DI (t-2)", "Log(GDPper-capita)", "Intercept"),
+  report = "vcs*",
+  notes = "Robust standard errors clustered by country in parentheses",
+  omit = "factor\\(year\\)",
+  model.names = FALSE,
+  out = "component_2/figures/stage1/s1_lag2_mods.html"
+)
+
+```
+
+## Check for Autocorrelation 
+```{r}
+# APPLY Wooldridge Test for AR(1) Errors in FE Panel Models: pwartest()
+# https://search.r-project.org/CRAN/refmans/plm/html/pwartest.html  
+# This is MUCH BETTER for panel data with small T AND unbalanced panels!!!
+pbgtest(fe_spi_di_L2) # Panel
+pwartest(fe_spi_di_L2) # FE [significant]
+pwfdtest(fd_spi_di_L2) # FD [significant]
+```
+Significant p-value indicates the presence of autocorrelation in the residuals of the fixed effects model. This suggests that the errors are correlated over time, which violates one of the key assumptions of linear regression models.
+
+This is corrected by using robust standard errors clustered by country, which accounts for the potential autocorrelation in the residuals.
+
+## Check for Heteroskedasticity
+```{r}
+# Apply Breusch-Pagan test for heteroskedasticity
+bptest(fe_spi_di_L2, studentize = TRUE) # Heteroskedasticity [significant]
+bptest(fd_spi_di_L2, studentize = TRUE) # Heteroskedasticity [significant]
+```
+The Breusch-Pagan test indicates the presence of heteroskedasticity in the residuals of the fixed effects model. This suggests that the variance of the errors is not constant across observations, which violates another key assumption of linear regression models.
+
+
+## Residual Diagnostics
+### PLOS Residuals for mediator model: SPI ~ DI + Controls [STAGE 1]
+```{r}
+# Extract the data actually used in the model
+ols_spi_di <- lm(spi_comp ~ di_score + log_gdppc + factor(year), data = panel_data) # regular linear model
+model_data1 <- model.frame(ols_spi_di)
+
+# switch to all stage-one plots 
+png("component_2/figures/stage1/all_s1_residual_plots.png", width = 8, height = 6.5, units = "in", res = 300)
+par(mfrow = c(3, 3))
+
+# Residuals vs Fitted Values plot for ols_spi_di
+plot(ols_spi_di, which = 1,
+     main = "Residuals vs Fitted Model", caption = "ols_spi_di [Stage 1]", pch = 1, cex = 0.35, col = "#595959")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+fitted_vals <- fitted(ols_spi_di)
+lines(lowess(fitted_vals, resid(ols_spi_di)), col = "red", lwd =  1.5)
+
+# Residuals vs di_score plot
+plot(model_data1$di_score, resid(ols_spi_di),
+     xlab = "di_score",  ylab = "", yaxt = "n", main = "Residuals vs di_score", pch = 1, cex = 0.35, col = "darkred")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data1$di_score, resid(ols_spi_di)), col = "red", lwd = 1.5)
+
+# Residuals vs log_gdppc plot
+plot(model_data1$log_gdppc, resid(ols_spi_di),
+     xlab = "log_gdppc",  ylab = "", yaxt = "n", main = "Residuals vs log_gdppc", pch = 1, cex = 0.35, col = "darkgreen")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data1$log_gdppc, resid(ols_spi_di)), col = "red", lwd =  1.5)
+
+#dev.off() # to save 
+
+#par(mfrow = c(1, 1))
+```
+
+### First Differences Residuals for mediator model: SPI ~ DI + Controls [STAGE 1]
+```{r}
+# Extract the data actually used in the model
+fd_spi_di <- lm(spi_diff ~ di_diff + log_gdppc_diff, data = fd_data)
+model_data_fd1 <- model.frame(fd_spi_di)
+
+# saving as png
+#png("figures/residual_plots/fd1_residual_plots.png", width = 8, height = 3, units = "in", res = 300)
+#par(mfrow = c(1, 3))
+
+# Residuals vs Fitted Values plot for fd_spi_di
+plot(fd_spi_di, which = 1,
+     main = "FD Residuals vs Fitted Model", caption = "fd_spi_di [Stage 1]", pch = 1, cex = 0.35, col = "#595959")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+fitted_vals_fd <- fitted(fd_spi_di)
+lines(lowess(fitted_vals_fd, resid(fd_spi_di)), col = "red", lwd =  1.5)
+
+# Residuals vs di_diff plot
+plot(model_data_fd1$di_diff, resid(fd_spi_di),
+     xlab = "di_diff",  ylab = "", yaxt = "n", main = "FD Residuals vs di_diff", pch = 1, cex = 0.35, col = "darkred")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fd1$di_diff, resid(fd_spi_di)), col = "red", lwd = 1.5)
+
+# Residuals vs log_gdppc_diff plot
+plot(model_data_fd1$log_gdppc_diff, resid(fd_spi_di),
+     xlab = "log_gdppc_diff",  ylab = "", yaxt = "n", main = "FD Residuals vs log_gdppc_diff", pch = 1, cex = 0.35, col = "darkgreen")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fd1$log_gdppc_diff, resid(fd_spi_di)), col = "red", lwd =  1.5)
+
+#dev.off() # to save
+#par(mfrow = c(1, 1))
+```
+
+### FE Residuals for mediator model: SPI ~ DI + Controls [STAGE 1]
+```{r}
+# Extract the data actually used in the model
+fe_spi_di <- lm(spi_comp ~ di_score + log_gdppc + factor(year) + factor(country_code), data = panel_data)
+model_data_fe1 <- model.frame(fe_spi_di)
+
+# saving as png
+#png("figures/residual_plots/fe1_residual_plots.png", width = 8, height = 3, units = "in", res = 300)
+#par(mfrow = c(1, 3))
+
+# Residuals vs Fitted Values plot for fe_spi_di
+plot(fe_spi_di, which = 1,
+     main = "FE Residuals vs Fitted Model", caption = "fe_spi_di [Stage 1]", pch = 1, cex = 0.35, col = "#595959")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+fitted_vals_fe <- fitted(fe_spi_di)
+lines(lowess(fitted_vals_fe, resid(fe_spi_di)), col = "red", lwd =  1.5)
+
+# Residuals vs di_score plot
+plot(model_data_fe1$di_score, resid(fe_spi_di),
+     xlab = "di_score",  ylab = "", yaxt = "n", main = "FE Residuals vs di_score", pch = 1, cex = 0.35, col = "darkred")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fe1$di_score, resid(fe_spi_di)), col = "red", lwd = 1.5)
+
+# Residuals vs log_gdppc plot
+plot(model_data_fe1$log_gdppc, resid(fe_spi_di),
+     xlab = "log_gdppc",  ylab = "", yaxt = "n", main = "FE Residuals vs log_gdppc", pch = 1, cex = 0.35, col = "darkgreen")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fe1$log_gdppc, resid(fe_spi_di)), col = "red", lwd =  1.5)
+
+dev.off() # to save
+par(mfrow = c(1, 1))
+```

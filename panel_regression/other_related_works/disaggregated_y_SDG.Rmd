@@ -1,0 +1,23 @@
+---
+title: "disaggregated_y_SDG"
+output: html_document
+---
+
+```{r}
+## MISC TESTING: MULTIPLE DEPENDENT VARIABLES WITH fixest PACKAGE ##
+library(fixest)
+
+panel_data_testing <- panel(panel_data, ~country_code + year)
+
+# Multiple dependent variables with same predictors
+models <- feols(c(goal1, goal2, goal3, goal4, goal5, goal6, goal7, goal8, goal9, 
+                  goal10, goal11, goal12, goal13, goal14, goal15, goal16, goal17) ~ 
+                  l(di_score, 0:2) 
+                + l(spi_comp, 0:2) 
+                + log_gdppc | country_code + year,
+                data = panel_data_testing)
+
+# View all results
+etable(models, cluster = ~country_code + year)
+```
+

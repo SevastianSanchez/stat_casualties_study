@@ -1,0 +1,180 @@
+---
+title: "H2_SPI~DI"
+output: html_document
+---
+
+
+# Set up and Wrangling 
+```{r}
+# set working directory
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+
+#load libraries/packages
+source("packages.R")
+
+# load data
+source("Comp2_panel_wrangling.R") 
+# path = 'data/Main CSV Outputs/merged_cleaned_spi.csv'
+```
+
+# Model Observations Function
+Function that extracts model data for plm models
+```{r}
+# load the extract_plm_data function
+source("functions/extract_plm_data_function.R")
+```
+
+# SPI and DI Relationship
+## Baseline Model [FOUND SOMETHING!!!]
+```{r}
+# baseline model
+FE_all <- plm(formula = spi_comp ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) + plm::lag(di_score, 3) + log_gdppc + income_level_recoded,
+              model = "within", 
+              index = c("country_code", "year"),
+              data = panel_data, 
+              effect = "twoways")
+summary(FE_all)
+summary(FE_all, vcov = vcovHC(FE_all, cluster = "group", type = "HC1"))
+
+# observations used
+FE_all_data <- extract_plm_data(FE_all)
+```
+
+
+## Stable Regime, Subgrouping [NOTHING]
+Using fixed effects regression, how does a change in DI score impact SPI performance? Is the impact lagged or immediate?
+```{r}
+# baseline model
+FE_stable <- plm(formula = spi_comp ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) + log_gdppc + income_level_recoded,
+              model = "within", 
+              index = c("country_code", "year"),
+              subset = eiu_stable == 1,
+              data = panel_data, 
+              effect = "twoways")
+summary(FE_stable)
+summary(FE_stable, vcov = vcovHC(FE_all, cluster = "group", type = "HC1"))
+
+# observations used 
+FE_stable <- extract_plm_data(FE_stable)
+```
+
+
+## Complete Regime Change (autocratized), Subgrouping 
+Of countries that experienced complete change from democracy to autocracy (15 countries), how did the decrease in DI score impact their SPI performance? Was the impact lagged or immediate?
+```{r}
+# autocratized variable 
+FE_aut <- plm(formula = spi_comp ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) + log_gdppc + income_level_recoded,
+              model = "within", 
+              index = c("country_code", "year"),
+              subset = eiu_autocratized == 1, # only autocratized countries
+              data = panel_data, 
+              effect = "twoways")
+summary(FE_aut)
+summary(FE_aut, vcov = vcovHC(FE_aut, cluster = "group", type = "HC1"))
+
+# observations used 
+FE_aut_data <- extract_plm_data(FE_aut)
+```
+
+## Complete Regime Change (democratized), Subgrouping 
+Of countries (15 countries) that experienced complete change from autocracy to democracy, how did the decrease in DI score impact their SPI performance? Was the impact lagged or immediate?
+```{r}
+# democratized variable 
+FE_dem <- plm(formula = spi_comp ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) + log_gdppc + income_level_recoded,
+              model = "within", 
+              index = c("country_code", "year"),
+              data = panel_data, 
+              subset = eiu_democratized == 1, # modifying based on regime stability
+              effect = "twoways")
+summary(FE_dem)
+summary(FE_dem, vcov = vcovHC(FE_dem, cluster = "group", type = "HC1"))
+
+# observations used 
+FE_dem_data <- extract_plm_data(FE_dem)
+```
+
+## Put all three models in a table
+```{r}
+# Extracting robust standard errors for the three FE models
+rob_se_fe <- list(
+  coeftest(FE_all, vcov = vcovHC(FE_all, cluster = "group", type = "HC1"))[, 2],
+  coeftest(FE_aut, vcov = vcovHC(FE_aut, cluster = "group", type = "HC1"))[, 2],
+  coeftest(FE_dem, vcov = vcovHC(FE_dem, cluster = "group", type = "HC1"))[, 2]
+)
+# stargazer table for FE models
+stargazer(
+  FE_all, FE_aut, FE_dem,
+  se = rob_se_fe,
+  type = "html",
+  title = "H4: SPI and DI Fixed Effects Models (Regime Change)",
+  align = TRUE,
+  dep.var.labels = "SPI Overall Score",
+  column.labels = c("All", "Autocratized", "Democratized"),
+  covariate.labels = c("DI Composite", "Lagged DI (t-1)", "Lagged DI (t-2)",  "Log(GDPper-capita)", "Lower-Middle Income (LMIC)", "Upper-Middle Income (UMIC)", "High Income (HIC)", "Intercept"),
+  report = "vcs*",
+  notes = "Robust standard errors clustered by country in parentheses",
+  omit = "factor\\(year\\)",
+  model.names = FALSE,
+  out = "compiled_materials/results/h4_spi_di_FE_models.html"
+)
+
+```
+
+# Testing other things ---------------------------------------------------------
+
+### Using di_score_lag1 and di_score_lag2 variables (eiu_autocratized == 1)
+```{r}
+# autocratized variable 
+FE_test <- plm(formula = spi_comp ~ di_score + di_score_lag1 + di_score_lag2 + log_gdppc + income_level_recoded,
+              model = "within", 
+              index = c("country_code", "year"),
+              subset = eiu_autocratized == 1, # only autocratized countries
+              data = panel_data, 
+              effect = "twoways")
+summary(FE_test)
+summary(FE_test, vcov = vcovHC(FE_test, cluster = "group", type = "HC1"))
+```
+[DIFFERENT RESULTS, INVESTIGATE!!]
+
+### Using di_score_lag1 and di_score_lag2 variables (eiu_democratized == 1)
+```{r}
+FE_test <- plm(formula = spi_comp ~ di_score + di_score_lag1 + di_score_lag2 + log_gdppc + income_level_recoded,
+              model = "within", 
+              index = c("country_code", "year"),
+              subset = eiu_democratized == 1, # only autocratized countries
+              data = panel_data, 
+              effect = "twoways")
+summary(FE_test)
+summary(FE_test, vcov = vcovHC(FE_test, cluster = "group", type = "HC1"))
+```
+[DIFFERENT RESULTS, INVESTIGATE!!]
+
+## interaction terms with plm lagged di_score
+```{r}
+FE_test <- plm(formula = spi_comp ~ di_score*plm::lag(di_score, 1) + plm::lag(di_score, 2) + log_gdppc + income_level_recoded,
+              model = "within", 
+              index = c("country_code", "year"),
+              subset = eiu_autocratized == 1, # only autocratized countries
+              data = panel_data, 
+              effect = "twoways")
+summary(FE_test)
+summary(FE_test, vcov = vcovHC(FE_test, cluster = "group", type = "HC1"))
+
+# observations used
+FE_test_data <- extract_plm_data(FE_test)
+```
+
+## adjusting x inputs 
+```{r}
+FE_test <- plm(formula = spi_comp ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) + log_gdppc + income_level_recoded,
+              model = "within", 
+              index = c("country_code", "year"),
+              subset = eiu_stable == 1, # only autocratized countries
+              data = panel_data, 
+              effect = "twoways")
+summary(FE_test)
+summary(FE_test, vcov = vcovHC(FE_test, cluster = "group", type = "HC1"))
+
+# observations used
+FE_test_data <- extract_plm_data(FE_test)
+```

@@ -1,0 +1,256 @@
+---
+title: "backsliding_countries"
+output: html_document
+---
+
+# preparation 
+```{r}
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+
+#load libraries 
+source("packages.R")
+
+#load data 
+source("Comp2_panel_wrangling.R")
+
+#selecting vars
+event_data <- panel_data %>% 
+  dplyr::select(country_code, year, missingness, elect_dem, aut_ep, dem_ep, regch_event, regime_type_2, regime_type_4, lib_dem, part_dem, delib_dem, egal_dem, academ_free, income_level, income_level_lab, log_gdppc, population) %>% 
+  arrange(country_code, year) %>%  # Critical for correct lagging
+  filter(year >= 2016)
+```
+
+# country_events dataframe: identifies/summarizes transition events per country
+```{r}
+#counting number of event-years: dem_ep & aut_ep
+country_events <- event_data %>%
+  group_by(country_code) %>%
+  summarize(
+    aut_ep_duration = sum(aut_ep == 1, na.rm = TRUE),
+    dem_ep_duration = sum(dem_ep == 1, na.rm = TRUE), 
+  )
+
+# creating condition dummy variables
+country_events <- country_events %>%
+  mutate(
+    has_aut_ep = (aut_ep_duration > 0) * 1, # experienced atleast 1 aut episode 
+    has_dem_ep = (dem_ep_duration > 0) * 1, # experienced atleast 1 dem episode 
+    either_event = (aut_ep_duration > 0 | dem_ep_duration > 0) * 1, # experience either kind of event
+    neither_event = (aut_ep_duration == 0 & dem_ep_duration == 0) * 1 # experienced neither event 
+  )
+
+# frequency summary stats [inclusive]
+summary_counts_incl <- country_events %>%
+  summarize(
+    num_countries_with_aut_events = sum(has_aut_ep),
+    num_countries_with_dem_events = sum(has_dem_ep),
+    num_countries_with_events = sum(either_event),
+    num_countries_without_events = sum(neither_event), 
+    total_countries = n()
+  )
+
+# labels for exclusive sorting [exclusive]
+country_events <- country_events %>%
+  mutate(event_pattern_excl = case_when(
+    has_aut_ep == 1 & has_dem_ep == 1 ~ "Both Events", #must go first to label both events 
+    has_aut_ep == 1 ~ "Backsliding Only",
+    has_dem_ep == 1 ~ "Democratizing Only",
+    neither_event == 1 ~ "Neither Event",
+  ))
+
+# frequency summary stats [exclusive]
+summary_counts_excl <- country_events %>%
+  summarize(
+    num_countries_with_only_aut_events = sum(event_pattern_excl== "Backsliding Only"),
+    num_countries_with_only_dem_events = sum(event_pattern_excl== "Democratizing Only"),
+    num_countries_with_both_events = sum(event_pattern_excl== "Both Events"),
+    num_countries_with_neither_events = sum(event_pattern_excl== "Neither Event"),
+    total_countries = n()
+  )
+```
+
+# creating summary table of event patterns (CSV & Stargazer Table)
+```{r}
+# Frequency & proportion table of event patterns [inclusive & exclusive]
+country_events_summary <- data.frame(
+  Event_Pattern = c("Countries with Autocratization Events", 
+                    "Countries with Democratization Events", 
+                    "Countries with Either Event", 
+                    "Countries with ONLY Autocratization Events",
+                    "Countries with ONLY Democratization Events",
+                    "Countries with Both Events",
+                    "Countries with Neither Event",
+                    "Total Countries"),
+  Frequency = c(summary_counts_incl$num_countries_with_aut_events, 
+                summary_counts_incl$num_countries_with_dem_events, 
+                summary_counts_incl$num_countries_with_events, 
+                summary_counts_excl$num_countries_with_only_aut_events,
+                summary_counts_excl$num_countries_with_only_dem_events,
+                summary_counts_excl$num_countries_with_both_events,
+                summary_counts_excl$num_countries_with_neither_events,
+                summary_counts_excl$total_countries
+                ),
+  Proportion = c(summary_counts_incl$num_countries_with_aut_events / summary_counts_incl$total_countries,
+                 summary_counts_incl$num_countries_with_dem_events / summary_counts_incl$total_countries,
+                 summary_counts_incl$num_countries_with_events / summary_counts_incl$total_countries,
+                 summary_counts_excl$num_countries_with_only_aut_events / summary_counts_excl$total_countries,
+                 summary_counts_excl$num_countries_with_only_dem_events / summary_counts_excl$total_countries,
+                 summary_counts_excl$num_countries_with_both_events / summary_counts_excl$total_countries,
+                 summary_counts_excl$num_countries_with_neither_events / summary_counts_excl$total_countries,
+  summary_counts_excl$total_countries / summary_counts_excl$total_countries
+))
+
+# write to csv
+#write_csv(country_events_summary, "results_csv/country_events_summary.csv")
+
+# creating stargazer table object
+country_events_table <- stargazer(country_events_summary, 
+                                    summary = FALSE, 
+                                    title = "Summary of Transition Event Patterns in 167 Countries (2015-2023)", 
+                                    type = "text", 
+                                    digits = 2,
+                                    rownames = FALSE,
+                                    align = TRUE,
+                                    no.space = TRUE,
+                                    font.size = "small",
+                                    #style = "ajps",
+                                    label = "tab:country_events_summary", 
+                                    out = "figures/country_events_summary.html"
+                                  )
+# print table 
+print(country_events_table)
+```
+
+**Frequency [inclusive]** 
+167: countries total; 
+within the time period of 2015-2023:  
+
+- 60 countries experienced at least 1 episode of autocratization  - 35 countries experienced at least 1 episode of democratization  
+- 75 countries experienced at least 1 episode of either autocratization or democratization  
+- 92 countries experienced neither kind of episode, autocratization or democratization
+
+**Proportions [inclusive]**
+- The proportion of countries that have experienced at least 1 episode of autocratization in the time period between 2015 and 2023 is 60/167 = 0.3592814 (35.93%)
+- The proportion of countries that have experienced at least 1 episode of democratization in the time period between 2015 and 2023 is 35/167 = 0.2095808 (20.96%)
+- The proportion of countries that have experienced either kind of transition episode (democratization or autocratization) in the time period between 2015 and 2023 is 75/167 =  0.4491018 (44.91%)
+- The proportion of countries that have NOT experienced any kind of transition episode the time period between 2015 and 2023 is 92/167 = 0.5508982 (55.09%)
+
+**Frequency [exclusive]** 
+- 40 countries experienced ONLY autocratization events
+- 15 countries experienced ONLY democratization events
+- 20 countries experienced both events (democratization and autocratization)
+
+**Proportions [exclusive]**
+- The proportion of countries that have experienced both events (democratization and autocratization) in the time period between 2015 and 2023 is 20/167 = 0.11976 (11.98%)
+- The proportion of countries that have experienced only backsliding in the time period between 2015 and 2023 is 40/167 = 0.23952 (23.95%)
+- The proportion of countries that have experienced only democratization in the time period between 2015 and 2023 is 15/167 = 0.08982 (8.98%)
+- The proportion of countries that have experienced neither event in the time period between 2015 and 2023 is 92/167 = 0.55090 (55.09%)
+
+# merging country_events df with event_data
+```{r}
+# Adding country_events data to event_data
+event_data <- event_data %>%
+  left_join(country_events, by = 'country_code')
+  #filter(has_aut_ep == TRUE | has_dem_ep == TRUE) #FILTERS TO ONLY CHANGING REGIMES
+
+# subgroups: regressing and democratizing coutries 
+aut_data <- event_data %>% filter(has_aut_ep == 1) ## experienced at least 1 backsliding event 
+dem_data <- event_data %>% filter(has_dem_ep == 1) ## experienced at least 1 democratizing event 
+```
+
+# complete regime change
+```{r}
+# Frequency/proportion table: instances of backsliding, stability, democratization from 2004-2024
+table(event_data$regch_event) # frequency
+prop.table(table(event_data$regch_event)) # proportions 
+
+#Frequency of countries that experienced democratization 2015-2024
+hist(dem_data$year[dem_data$regch_event==1], breaks = 20)
+
+#Frequency of countries that experienced autocratization 2015-2024
+hist(aut_data$year[aut_data$regch_event==-1], breaks = 20)
+
+#Frequency of countries that experienced no change 2015-2024 [FIX HERE AND BELOW]
+hist(merged$year[merged$regch_event==0], breaks = 20)
+```
+
+
+# Backsliding FD Models 
+
+## Stage 1
+```{r}
+# SPI ~ DI (M ~ X) 
+fd_spi_di_aut <- plm(
+  formula = spi_comp ~ dplyr::lag(di_score, 1) + log_gdppc,
+  index = c("country_code", "year"),
+  data = aut_data, 
+  model = "fd" #FD
+) 
+# Country-level custard Robust SEs
+summary(fd_spi_di_aut, vcov = vcovHC(fd_spi_di_aut, cluster = "group", type = "HC1"))
+```
+
+## Stage 2
+```{r}
+# SDG ~ SPI (Y ~ M)
+fd_sdg_spi_aut <- plm(
+  formula = sdg_overall ~ lag(spi_comp, 1) + dplyr::lag(di_score, 2) + log_gdppc,
+  index = c("country_code", "year"),
+  data = aut_data, 
+  model = "fd"
+)
+# Country-level custard Robust SEs
+summary(fd_sdg_spi_aut, vcov = vcovHC(fd_sdg_spi_aut, cluster = "group", type = "HC1"))
+```
+On average, when backsliding countries experience a change in Democracy score, is there a change in statistical capacity (SPI)? On average, when backsliding countries experience a change in statistical capacity (SPI) do they similalry experience a change in SDG score? 
+
+# Backsliding FE Models
+```{r}
+###### SPI ~ DI (M ~ X) ######
+fe_spi_di_aut <- plm(
+  formula = spi_comp ~ di_score + log_gdppc + factor(year),
+  index = c("country_code", "year"),
+  data = aut_data,
+  model = "within" 
+)
+summary(fe_spi_di_aut, vcov = vcovHC(fe_spi_di_aut, cluster = "group", type = "HC1")) # Robust SEs
+
+###### SDG ~ SPI (Y ~ M) ######
+fe_sdg_spi_aut <- plm(
+  sdg_overall ~ spi_comp + di_score + log_gdppc + factor(year),
+  index = c("country_code", "year"),
+  data = aut_data,
+  model = "within" 
+)
+summary(fe_sdg_spi_aut, vcov = vcovHC(fe_sdg_spi_aut, cluster = "group", type = "HC1")) # Robust SEs
+```
+
+# Single Country: Hungary 
+```{r}
+#filter for hungary 
+hun_regressed <- aut_data %>% 
+  filter(country_code == "HUN")
+
+# FE model - Hungary 
+fe_testing <- plm(
+  formula = spi_comp ~ di_score + log_gdppc,
+  data = aut_data, sub = (country_code == 'HUN'),
+  index = c("country_code", "year"),
+  model = "within")
+summary(fe_testing, vcov = vcovHC(fe_testing, type = "HC3"))
+```
+
+#testing for autocorrelation 
+```{r}
+lmtest::bgtest(fe_testing)
+lmtest::bgtest(fe_testing, order = 1)
+```
+
+
+```{r}
+# subset of countries that experienced atleast 1 democratization event 
+democratized <- merged %>% 
+  group_by(country_code) %>%
+  filter(dem_ep == 1) %>%
+  ungroup()
+```

@@ -1,0 +1,9 @@
+Event_Pattern,Frequency,Proportion
+Countries with Autocratization Events,60,0.3592814371257485
+Countries with Democratization Events,35,0.20958083832335328
+Countries with Either Event,75,0.4491017964071856
+Countries with ONLY Autocratization Events,40,0.23952095808383234
+Countries with ONLY Democratization Events,15,0.08982035928143713
+Countries with Both Events,20,0.11976047904191617
+Countries with Neither Event,92,0.5508982035928144
+Total Countries,167,1

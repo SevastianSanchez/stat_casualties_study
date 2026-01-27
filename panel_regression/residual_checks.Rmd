@@ -1,0 +1,230 @@
+---
+title: "residual_checks"
+output: html_document
+---
+
+# Residual Diagnostics for Panel Regression Models
+```{r}
+# Load necessary libraries
+source("packages.R")
+
+# Load panel data
+source("Comp2_panel_wrangling.R")
+```
+
+## STAGE 1: 
+### PLOS Residuals for mediator model: SPI ~ DI + Controls [STAGE 1]
+```{r}
+# Extract the data actually used in the model
+ols_spi_di <- lm(spi_comp ~ di_score + log_gdppc + factor(year), data = panel_data) # regular linear model
+model_data1 <- model.frame(ols_spi_di)
+
+# switch to all stage-one plots 
+png("component_2/figures/stage1/all_s1_residual_plots.png", width = 8, height = 6.5, units = "in", res = 300)
+par(mfrow = c(3, 3))
+
+# Residuals vs Fitted Values plot for ols_spi_di
+plot(ols_spi_di, which = 1,
+     main = "Residuals vs Fitted Model", caption = "ols_spi_di [Stage 1]", pch = 1, cex = 0.35, col = "#595959")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+fitted_vals <- fitted(ols_spi_di)
+lines(lowess(fitted_vals, resid(ols_spi_di)), col = "red", lwd =  1.5)
+
+# Residuals vs di_score plot
+plot(model_data1$di_score, resid(ols_spi_di),
+     xlab = "di_score",  ylab = "", yaxt = "n", main = "Residuals vs di_score", pch = 1, cex = 0.35, col = "darkred")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data1$di_score, resid(ols_spi_di)), col = "red", lwd = 1.5)
+
+# Residuals vs log_gdppc plot
+plot(model_data1$log_gdppc, resid(ols_spi_di),
+     xlab = "log_gdppc",  ylab = "", yaxt = "n", main = "Residuals vs log_gdppc", pch = 1, cex = 0.35, col = "darkgreen")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data1$log_gdppc, resid(ols_spi_di)), col = "red", lwd =  1.5)
+
+#dev.off() # to save 
+
+#par(mfrow = c(1, 1))
+```
+
+### First Differences Residuals for mediator model: SPI ~ DI + Controls [STAGE 1]
+```{r}
+# Extract the data actually used in the model
+fd_spi_di <- lm(spi_diff ~ di_diff + log_gdppc_diff, data = fd_data)
+model_data_fd1 <- model.frame(fd_spi_di)
+
+# saving as png
+#png("figures/residual_plots/fd1_residual_plots.png", width = 8, height = 3, units = "in", res = 300)
+#par(mfrow = c(1, 3))
+
+# Residuals vs Fitted Values plot for fd_spi_di
+plot(fd_spi_di, which = 1,
+     main = "FD Residuals vs Fitted Model", caption = "fd_spi_di [Stage 1]", pch = 1, cex = 0.35, col = "#595959")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+fitted_vals_fd <- fitted(fd_spi_di)
+lines(lowess(fitted_vals_fd, resid(fd_spi_di)), col = "red", lwd =  1.5)
+
+# Residuals vs di_diff plot
+plot(model_data_fd1$di_diff, resid(fd_spi_di),
+     xlab = "di_diff",  ylab = "", yaxt = "n", main = "FD Residuals vs di_diff", pch = 1, cex = 0.35, col = "darkred")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fd1$di_diff, resid(fd_spi_di)), col = "red", lwd = 1.5)
+
+# Residuals vs log_gdppc_diff plot
+plot(model_data_fd1$log_gdppc_diff, resid(fd_spi_di),
+     xlab = "log_gdppc_diff",  ylab = "", yaxt = "n", main = "FD Residuals vs log_gdppc_diff", pch = 1, cex = 0.35, col = "darkgreen")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fd1$log_gdppc_diff, resid(fd_spi_di)), col = "red", lwd =  1.5)
+
+#dev.off() # to save
+#par(mfrow = c(1, 1))
+```
+
+### FE Residuals for mediator model: SPI ~ DI + Controls [STAGE 1]
+```{r}
+# Extract the data actually used in the model
+fe_spi_di <- lm(spi_comp ~ di_score + log_gdppc + factor(year) + factor(country_code), data = panel_data)
+model_data_fe1 <- model.frame(fe_spi_di)
+
+# saving as png
+#png("figures/residual_plots/fe1_residual_plots.png", width = 8, height = 3, units = "in", res = 300)
+#par(mfrow = c(1, 3))
+
+# Residuals vs Fitted Values plot for fe_spi_di
+plot(fe_spi_di, which = 1,
+     main = "FE Residuals vs Fitted Model", caption = "fe_spi_di [Stage 1]", pch = 1, cex = 0.35, col = "#595959")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+fitted_vals_fe <- fitted(fe_spi_di)
+lines(lowess(fitted_vals_fe, resid(fe_spi_di)), col = "red", lwd =  1.5)
+
+# Residuals vs di_score plot
+plot(model_data_fe1$di_score, resid(fe_spi_di),
+     xlab = "di_score",  ylab = "", yaxt = "n", main = "FE Residuals vs di_score", pch = 1, cex = 0.35, col = "darkred")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fe1$di_score, resid(fe_spi_di)), col = "red", lwd = 1.5)
+
+# Residuals vs log_gdppc plot
+plot(model_data_fe1$log_gdppc, resid(fe_spi_di),
+     xlab = "log_gdppc",  ylab = "", yaxt = "n", main = "FE Residuals vs log_gdppc", pch = 1, cex = 0.35, col = "darkgreen")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fe1$log_gdppc, resid(fe_spi_di)), col = "red", lwd =  1.5)
+
+dev.off() # to save
+par(mfrow = c(1, 1))
+```
+
+## STAGE 2: Base/Outcome Model Residual Diagnostics
+### POLS Residuals for base/outcome model: SDG ~ SPI + DI + Controls [STAGE 2]
+```{r}
+# Extract the data actually used in the base model
+ols_base_lm <- lm(sdg_overall ~ spi_comp + di_score + log_gdppc + factor(year), data = panel_data) # regular linear model
+model_data2 <- model.frame(ols_base_lm)
+
+# saving all stage-two plots
+png("component_2/figures/stage2/all_s2_residual_plots.png", width = 8.5, height = 6.5, units = "in", res = 300)
+par(mfrow = c(3, 4))
+
+# Residuals vs Fitted Values plot for ols_base_lm
+plot(ols_base_lm, which = 1,
+     main = "Residuals vs Fitted Model", caption = "ols_base [Stage 2]", pch = 1, cex = 0.35, col = "#595959")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+fitted_vals <- fitted(ols_base_lm)
+lines(lowess(fitted_vals, resid(ols_base_lm)), col = "red", lwd =  1.5)
+
+# Residuals vs spi_comp plots
+plot(model_data2$spi_comp, resid(ols_base_lm),
+     xlab = "spi_comp", ylab = "", yaxt = "n", main = "Residuals vs spi_comp", pch = 1, cex = 0.35, col = "darkblue")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data2$spi_comp, resid(ols_base_lm)), col = "red", lwd =  1.5)
+
+# Residuals vs di_score plot
+plot(model_data2$di_score, resid(ols_base_lm),
+     xlab = "di_score", ylab = "", yaxt = "n", main = "Residuals vs di_score", pch = 1, cex = 0.35, col = "darkred")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data2$di_score, resid(ols_base_lm)), col = "red", lwd = 1.5)
+
+# Residuals vs log_gdppc plot
+plot(model_data2$log_gdppc, resid(ols_base_lm),
+     xlab = "log_gdppc", ylab = "", yaxt = "n", main = "Residuals vs log_gdppc", pch = 1, cex = 0.35, col = "darkgreen")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data2$log_gdppc, resid(ols_base_lm)), col = "red", lwd =  1.5)
+
+#dev.off() # to save 
+#par(mfrow = c(1, 1))
+```
+The residuals vs fitted values plot shows a clear pattern, indicating non-linearity in the relationship between the predictors and the SDG performance. The residuals are not randomly distributed around zero, suggesting that the linear model does not adequately capture the underlying relationship.
+
+### First Differences Residuals for base/outcome model: SDG ~ SPI + DI + Controls [STAGE 2]
+```{r}
+# Extract the data actually used in the base model
+fd_base_lm <- lm(sdg_diff ~ spi_diff + di_diff + log_gdppc_diff, data = fd_data)
+model_data_fd2 <- model.frame(fd_base_lm)
+
+# Residuals vs Fitted Values plot for fd_base_lm
+plot(fd_base_lm, which = 1,
+     main = "FD Residuals vs Fitted Model", caption = "fd_base [Stage 2]", pch = 1, cex = 0.35, col = "#595959")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+fitted_vals_fd2 <- fitted(fd_base_lm)
+lines(lowess(fitted_vals_fd2, resid(fd_base_lm)), col = "red", lwd =  1.5)
+
+# Residuals vs spi_comp plots
+plot(model_data_fd2$spi_diff, resid(fd_base_lm),
+     xlab = "spi_diff", ylab = "", yaxt = "n", main = "FD Residuals vs spi_comp", pch = 1, cex = 0.35, col = "darkblue")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fd2$spi_diff, resid(fd_base_lm)), col = "red", lwd =  1.5)
+
+# Residuals vs di_score plot
+plot(model_data_fd2$di_diff, resid(fd_base_lm),
+     xlab = "di_diff",  ylab = "", yaxt = "n", main = "FD Residuals vs di_score", pch = 1, cex = 0.35, col = "darkred")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fd2$di_diff, resid(fd_base_lm)), col = "red", lwd = 1.5)
+
+# Residuals vs log_gdppc_diff plot
+plot(model_data_fd2$log_gdppc_diff, resid(fd_base_lm),
+     xlab = "log_gdppc_diff",  ylab = "", yaxt = "n", main = "FD Residuals vs log_gdppc", pch = 1, cex = 0.35, col = "darkgreen")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fd2$log_gdppc_diff, resid(fd_base_lm)), col = "red", lwd =  1.5)
+
+#dev.off() # to save
+#par(mfrow = c(1, 1))
+```
+
+### FE Residuals for base/outcome model: SDG ~ SPI + DI + Controls [STAGE 2]
+```{r}
+# Extract the data actually used in the base model
+fe_base_lm <- lm(sdg_overall ~ spi_comp + di_score + log_gdppc + factor(year) + factor(country_code), data = panel_data)
+model_data_fe2 <- model.frame(fe_base_lm)
+
+# Residuals vs Fitted Values plot for fe_base_lm
+plot(fe_base_lm, which = 1,
+     main = "FE Residuals vs Fitted Model", caption = "fe_base [Stage 2]", pch = 1, cex = 0.35, col = "#595959")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+fitted_vals_fe2 <- fitted(fe_base_lm)
+lines(lowess(fitted_vals_fe2, resid(fe_base_lm)), col = "red", lwd =  1.5)
+
+# Residuals vs spi_comp plots
+plot(model_data_fe2$spi_comp, resid(fe_base_lm),
+     xlab = "spi_comp", ylab = "", yaxt = "n", main = "FE Residuals vs spi_comp", pch = 1, cex = 0.35, col = "darkblue")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fe2$spi_comp, resid(fe_base_lm)), col = "red", lwd =  1.5)
+
+# Residuals vs di_score plot
+plot(model_data_fe2$di_score, resid(fe_base_lm),
+     xlab = "di_score", ylab = "", yaxt = "n", main = "FE Residuals vs di_score", pch = 1, cex = 0.35, col = "darkred")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fe2$di_score, resid(fe_base_lm)), col = "red", lwd = 1.5)
+
+# Residuals vs log_gdppc plot
+plot(model_data_fe2$log_gdppc, resid(fe_base_lm),
+     xlab = "log_gdppc",  ylab = "", yaxt = "n", main = "FE Residuals vs log_gdppc", pch = 1, cex = 0.35, col = "darkgreen")
+abline(h = 0, col = "black", lty = 2, lwd = 1)
+lines(lowess(model_data_fe2$log_gdppc, resid(fe_base_lm)), col = "red", lwd =  1.5)
+
+dev.off() # to save
+par(mfrow = c(1, 1))
+```
+- No unsusual curvatures or patterns. 
+- Homoscedasticity seems reasonable.
+- No obvious outliers.
+- Residuals appear roughly normally distributed.
+- Overall, the residual diagnostics suggest that the linear regression assumptions are reasonably met for both models.

@@ -1,0 +1,246 @@
+---
+title: "Comp3_interactions"
+author: "Sevastian Sanchez"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: no
+    toc_depth: '3'
+    number_sections: yes
+  html_document:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: yes
+    highlight: tango
+    theme: default
+    fig_caption: yes
+    df_print: tibble
+  word_document: default
+  urlcolor: blue
+---
+```{r}
+knitr::opts_chunk$set(
+  echo = TRUE, warning = FALSE, message = FALSE,
+  tidy = TRUE, tidy.opts = list(width.cutoff = 60) 
+)
+```
+
+# Set up and Wrangling 
+```{r}
+# set working directory
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+
+#load libraries/packages
+source("packages.R")
+
+# load data
+source("Comp2_panel_wrangling.R")
+```
+
+**Quick Counts**
+```{r}
+# EIU DI binary regime type 
+table(panel_data$eiu_regime_type)
+
+# RoW V-Dem binary regime type
+#table(panel_data$regime_type_binary)
+
+# income_level_recoded 
+table(panel_data$income_level_recoded)
+```
+
+## Stepwise Check: Moderator/Interaction Terms [Stage 1]
+
+## Converting to panel data frame
+```{r}
+panel_data <- pdata.frame(panel_data, index = c("country_code", "year"))
+pdim(panel_data) # check panel dimensions
+```
+
+## Regime Change Episodes (has_aut_ep), Subgrouping
+```{r}
+FE_testing <- plm(formula = spi_comp ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) + log_gdppc,
+                  model = "within", 
+                  index = c("country_code", "year"),
+                  data = panel_data, 
+                  subset = has_aut_ep == 1, # modifying based regime stability
+                  effect = "twoways")
+summary(FE_testing)
+summary(FE_testing, vcov = vcovHC(FE_testing, cluster = "group", type = "HC1"))
+```
+
+## Regime Change Episodes (has_dem_ep), Subgrouping
+```{r}
+FE_testing <- plm(formula = spi_comp ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) + log_gdppc,
+                  model = "within", 
+                  index = c("country_code", "year"),
+                  data = panel_data, 
+                  subset = has_dem_ep == 1, # modifying based regime stability
+                  effect = "twoways")
+summary(FE_testing)
+summary(FE_testing, vcov = vcovHC(FE_testing, cluster = "group", type = "HC1"))
+```
+
+
+## Complete Regime Change (autocratized), Subgrouping [FOUND SOMETHING!!!]
+Of countries (15 countries) that experienced complete change from democracy to autocracy, how did the decrease in DI score impact their SPI performance? Was the impact lagged or immediate?
+```{r}
+# autocratized variable 
+FE_testing <- plm(formula = spi_comp ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) + log_gdppc,
+                  model = "within", 
+                  index = c("country_code", "year"),
+                  data = panel_data, 
+                  subset = autocratized == 1, # modifying based regime stability
+                  effect = "twoways")
+summary(FE_testing)
+summary(FE_testing, vcov = vcovHC(FE_testing, cluster = "group", type = "HC1"))
+```
+
+## Complete Regime Change (democratized), Subgrouping [FOUND SOMETHING!!!]
+Of countries (15 countries) that experienced complete change from autocracy to democracy, how did the decrease in DI score impact their SPI performance? Was the impact lagged or immediate?
+```{r}
+# autocratized variable 
+FE_testing <- plm(formula = spi_comp ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) + log_gdppc,
+                  model = "within", 
+                  index = c("country_code", "year"),
+                  data = panel_data, 
+                  subset = democratized == 1, # modifying based on regime stability
+                  effect = "twoways")
+summary(FE_testing)
+summary(FE_testing, vcov = vcovHC(FE_testing, cluster = "group", type = "HC1"))
+```
+
+## Stepwise Check: Moderator/Interaction Terms [Stage 1]
+*H0:* NUll, the impact of DI on SPI Performance does NOT vary depending on Z [regime_type_binary, di_score]
+*H1:* The impact of DI on SPI Performance varies depending on Z [regime_type_binary,  di_score]
+
+**Recoded Moderator Variables:**
+- regime_type_binary: 0 = Autocracy; 1 = Democracy
+- aut_ep: 0 = No Autocratization; 1 = Autocratization Event
+- dem_ep: 0 = No Democratization; 1 = Democratization Event
+**NOTE**: Based on the results of the RESET test, I will not include polynomial terms in the interaction models, as the linear model is appropriate.
+```{r}
+### HYPOTHESES ###
+
+# Interaction: DI x Regime Change Episode/Direction
+# HA: The impact of SPI on SDG performance varies depending on Regime Change Status/Direction
+di_x_reg_eps <- plm(formula = spi_comp ~ plm::lag(cen_di_score, 1)*plm::lag(aut_ep, 1) + plm::lag(cen_di_score, 1)*plm::lag(dem_ep, 1) + cen_log_gdppc,
+                   model = "within", 
+                   index = c("country_code", "year"),
+                   effect = "twoways",
+                   data = panel_data)
+summary(di_x_reg_eps, vcov = vcovHC(di_x_reg_eps, cluster = "group", type = "HC1"))
+
+# Enhanced helper function
+tidy_plm_robust <- function(model, model_name) {
+  tidy_coef <- tidy(model, 
+                    conf.int = TRUE, 
+                    vcov. = vcovHC(model, cluster = "group", type = "HC1")) %>%
+    mutate(model = model_name)
+  
+  # Extract model statistics
+  model_summary <- summary(model)
+  tidy_coef %>%
+    mutate(
+      adj_r_squared = model_summary$r.squared["adjrsq"]
+    )
+}
+
+# Apply tidy_plm_robust() function to all models
+tidy_di_x_inc_lvl    <- tidy_plm_robust(di_x_inc_lvl, "Moderator: DI x Income Level")
+tidy_di_x_reg_binary <- tidy_plm_robust(di_x_reg_binary, "Moderator: DI x Regime Type (Binary)")
+tidy_di_x_reg_eps  <- tidy_plm_robust(di_x_reg_eps, "Moderator: DI x Regime Change Episode (aut_ep & dem_ep)")
+
+model_n_obs <- tibble(
+  model = c("Moderator: DI x Income Level", "Moderator: DI x Regime Type Binary", 
+            "Moderator: DI x Regime Change Episode (aut_ep & dem_ep)"),
+  n_obs = c(nobs(di_x_inc_lvl), nobs(di_x_reg_binary),
+            nobs(di_x_reg_eps))
+)
+
+# Combine all tidy data frames into one
+all_models_tidy <- bind_rows(tidy_di_x_inc_lvl, 
+                             tidy_di_x_reg_binary, 
+                             tidy_di_x_reg_eps) %>%
+  left_join(model_n_obs, by = "model") %>% 
+  select(model, term, estimate, std.error, p.value, adj_r_squared, n_obs, everything()) %>%
+  arrange(model, term)
+
+# Save the tidy data frame to a CSV file
+write_csv(all_models_tidy, "results_csv/fe_s1_interactions.csv")
+
+# extracting robust standard errors for each interaction model
+rob_se_di_x_inc_lvl <- coeftest(di_x_inc_lvl, vcov = vcovHC(di_x_inc_lvl, cluster = "group", type = "HC1"))
+rob_se_di_x_reg_binary <- coeftest(di_x_reg_binary, vcov = vcovHC(di_x_reg_binary, cluster = "group", type = "HC1"))
+rob_se_di_x_reg_eps <- coeftest(di_x_reg_eps, vcov = vcovHC(di_x_reg_eps, cluster = "group", type = "HC1"))
+
+# Create a list of robust standard errors for stargazer
+robust_se_list <- list(
+  rob_se_di_x_inc_lvl[, 2], 
+  rob_se_di_x_reg_binary[, 2], 
+  rob_se_di_x_reg_eps[, 2]
+  )
+          
+stargazer(
+  di_x_inc_lvl, di_x_reg_binary, di_x_reg_eps, 
+  se = robust_se_list,
+  type = "html",
+  out = "figures/interact_s1_models.html",
+  report = "vcs*",
+  title = "Stage 1: Applying Moderators to Two-Way Fixed Effects Models",
+  align = TRUE,
+  dep.var.labels = "SDG Overall",
+  column.labels = c("DI x Income Level", "DI x Regime Type (Binary: Autocracy)", "DI x Regime Change Episode"),
+  omit = "factor\\(year\\)",  # Omits year fixed effects from display
+  model.names = FALSE
+)
+```
+*Interaction: Regime Type (Binary):*
+*HA: The impact of SPI on SDG performance varies depending on Regime Type (Binary: 0 = Autocracy; 1 = Democracy)*
+Not significant 
+
+*Interaction: Regime Change Status/Direction:*
+*HA: The impact of SPI on SDG performance varies depending on Regime Change Status/Direction*
+Not significant
+
+### Partial F Test for Interaction Terms
+```{r}
+# Partial F Test for Interaction Terms
+# restricted model without interaction terms 
+restricted_model <- plm(formula = spi_comp ~ cen_di_score + cen_log_gdppc,
+                        model = "within", 
+                        index = c("country_code", "year"),
+                        data = panel_data,
+                        effect = "twoways")
+
+# Perform the partial F test[FIGURE OUT WHY IS NOT WORKINGGG]
+## This is the right approach according to the lecture!!!
+partial_f_test <- pFtest(restricted_model, di_x_inc_lvl)
+partial_f_test
+```
+----------------------------------------------------------------------
+# Interaction Effects [Stage 2]
+*H0:* NUll, the impact of SPI on SDG Performance does NOT vary depending on Z 
+*H1:* The impact of SPI on SDG Performance varies depending on Z 
+[Z = regime_type_binary, regime_type_categ, di_score]
+
+**Recoded Moderator Variables (Z):**
+- regime_type_binary: 0 = Autocracy; 1 = Democracy
+- di_score: 0-1, continuous (Democracy Index)
+- aut_ep: 0 = No Autocratization; 1 = Autocratization Event
+- dem_ep: 0 = No Democratization; 1 = Democratization Event
+```{r}
+
+# Interaction 2: SPI x DI
+# HA: The impact of SPI on SDG performance varies depending on Democracy Score 
+
+
+# Interaction 3: SPI x Regime Type (binary)
+# HA: The impact of SPI on SDG performance varies depending on Regime Type 
+
+
+# Interaction 4: SPI x Regime Change Event (Autocratization or Democratization)
+# HA: The impact of SPI on SDG performance varies depending on Regime Change Status/Direction
+
+```

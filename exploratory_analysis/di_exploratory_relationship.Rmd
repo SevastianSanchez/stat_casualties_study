@@ -1,0 +1,60 @@
+---
+title: "Preliminary Exploratory Analysis of DI and SPI/SDG Relationship"
+author: "Sevastian Sanchez"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: no
+    toc_depth: '3'
+    number_sections: yes
+  html_document:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: yes
+    highlight: tango
+    theme: default
+    fig_caption: yes
+    df_print: tibble
+---
+
+
+### NAIVE OLS Models: DI variable on SPI & SDG Performance 
+Finding estimated impact of DI on SPI and SDG status prior to adding controls or robust SEs
+```{r}
+# 1. OLS for SPI and DI - Overall
+ols_spi_di_naive <- lm(spi_comp ~ di_score, data = merged)
+summary(ols_spi_di_naive)
+
+# 2. OLS for SDG and DI - Overall
+ols_sdg_di_naive <- lm(sdg_overall ~ di_score, data = merged)
+summary(ols_sdg_di_naive)
+
+# stargazer summary table of models: ols_spi_di_naive, ols_sdg_di_naive.
+stargazer(
+  ols_spi_di_naive, 
+  ols_sdg_di_naive, 
+  title = "Naive OLS Models: DI & SPI/SDG",
+  dep.var.caption = "Dependent Variable:",
+  dep.var.labels = c("SDG Composite Score", "SPI Composite Score"),
+  #covariate.labels = c("di_score", "Intercept"),
+  #column.labels = c("SPI Only", "SCI Only", "SPI + SCI"),  # <-- Model labels at the top
+  omit.stat = c("f", "ser"), 
+  digits = 4,
+  type = "text"
+  #out = "component_1/figures/naive_mods_sdgs&spi_di_tab.html"  # Save as HTML file
+)
+
+```
+*results*
+ols_spi_di_naive: 5.0122 (p-value < 0.001)
+ols_sdg_di_naive: 3.22301 (p-value < 0.001)
+
+The naive OLS models indicate that the Democracy Index (DI) has a strong positive relationship with both the Statistical Performance Index (SPI) and the Sustainable Development Goals (SDG) composite scores. The coefficients suggest that a one-unit increase in DI is associated with a 5.0122 increase in SPI and a 3.22301 increase in SDG scores, both statistically significant at p < 0.001. This suggests that countries with higher democracy scores tend to have better statistical performance and SDG outcomes.
+
+### Checking for Heteroskedasticity: residual plots [no need to report]
+```{r}
+plot(ols_spi_di_naive, which = 1)  # SPI ~ DI model 
+plot(ols_sdg_di_naive, which = 1)  # SDG ~ DI model 
+```
+

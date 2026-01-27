@@ -1,0 +1,450 @@
+---
+title: "Interactions & Subgroup Analysis (POLS) [EDITING STAGES]"
+author: "Sevastian Sanchez"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: no
+    toc_depth: '3'
+    number_sections: yes
+  html_document:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: yes
+    highlight: tango
+    theme: default
+    fig_caption: yes
+    df_print: tibble
+---
+```{r include=FALSE}
+knitr::opts_chunk$set(
+  tidy = TRUE,
+  tidy.opts = list(width.cutoff = 60)  # Adjust width as needed
+)
+```
+
+### Setup
+```{r}
+# set working directory
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+
+# load libraries
+source("packages.R")
+
+#load final merged df 
+merged <- read_csv("data/Main CSV Outputs/comp1_data.csv") # updated 
+
+# refer to 'wrangled/adjust_output.Rmd' to make necessary adjustments 
+```
+
+### Selecting variables and filtering years +2015
+```{r}
+# Wrangling for analysis and multicollinearity concerns 
+merged_2015 <- merged %>% 
+  filter(year >= 2016) %>% 
+  # Selecting relevant variables for analysis 
+  dplyr::select(country_code, year, sdg_overall, spi_comp, di_score, log_gdppc, income_level, regime_type_2, regime_type_4, regch_event)
+```
+
+### Test 3: Checking for Interactions
+modeling how the effect of SPI on SDG performance depends on one/any of the following moderators:
+  - income level (GNI Classification)
+  - regime type (RoW Binary & Categorical)
+  - democracy index (di_score)
+- Is there a need for subgroup analysis, and if so, by what kind of group? 
+- Possible Moderators: GNI Classification (income_level), regime_type_2, regime_type_4, di_score
+
+#### Recoding for Interactions
+```{r}
+# Recode to dummy variables
+merged_2015 <- merged_2015 %>% 
+  # Recoding income_level, split income_level into dummy variables using case_when()
+  mutate(income_level_recoded = case_when(
+    income_level == "L" ~ 0, # Low-Income
+    income_level == "LM" ~ 1, # Lower-Middle-Income
+    income_level == "UM" ~ 2, # Upper-Middle-Income
+    income_level == "H" ~ 3, # High-Income
+    TRUE ~ NA_real_  # Handle any other cases
+  )) %>% 
+  mutate(income_level_recoded = as.factor(income_level_recoded)) %>% 
+  # recoding/factorizing regime_type_2: 0 = Autocracy; 1 = Democracy 
+  mutate(regime_type_binary = as.factor(regime_type_2)) %>% 
+  # recoding regime_type_4: 0 = Closed Autocracy; 1 = Electoral Autocracy; 2 = Electoral Democracy; 3 = Full Democracy
+  mutate(regime_type_categ = as.factor(regime_type_4)) %>% 
+  mutate(aut_ep = as.factor(aut_ep), # autocratization episode
+         dem_ep = as.factor(dem_ep)) # democratization episode
+
+### HYPOTHESES ###
+# H0: NUll, the impact of SPI on SDG Performance does NOT vary depending on Z [income_level_recoded, regime_type_binary, regime_type_categ, di_score]
+# H1: The impact of SPI on SDG Performance varies depending on Z [income_level_recoded, regime_type_binary, regime_type_categ, di_score]
+
+# Interaction 1: 
+# HA: The impact of SPI on SDG performance varies depending on GNI Classification (income_level_recoded: 1 = Low; 2 = Lower-Middle; 3 = Upper-Middle; 4 = High)
+spi_x_inc_lvl <- plm(sdg_overall ~ cen_spi_comp*factor(income_level_recoded) + cen_di_score +
+                       cen_log_gdppc + I(cen_log_gdppc^2) + factor(year), 
+                     model = "pooling", 
+                     index = c("country_code", "year"),
+                     data = merged_2015)
+summary(spi_x_inc_lvl, vcov = vcovHC(spi_x_inc_lvl, cluster = "group", type = "HC1"))
+
+
+# Interaction 2: 
+# HA: The impact of SPI on SDG performance varies depending on Regime Type (Binary: 0 = Autocracy; 1 = Democracy)
+spi_x_reg_binary <- plm(sdg_overall ~ cen_spi_comp*factor(regime_type_binary) + cen_di_score +
+                          cen_log_gdppc + I(cen_log_gdppc^2) + factor(year), 
+                        model = "pooling", 
+                        index = c("country_code", "year"),
+                        data = merged_2015)
+summary(spi_x_reg_binary, vcov = vcovHC(spi_x_reg_binary, cluster = "group", type = "HC1"))
+
+
+# Interaction 3: 
+# HA: The impact of SPI on SDG performance varies depending on Regime Type (Categorical: 0 = Closed Autocracy; 1 = Electoral Autocracy; 2 = Electoral Democracy; 3 = Full Democracy)
+spi_x_reg_categ <- plm(sdg_overall ~ cen_spi_comp*factor(regime_type_categ) + cen_di_score + 
+                         cen_log_gdppc + I(cen_log_gdppc^2) + factor(year), 
+                       model = "pooling", 
+                       index = c("country_code", "year"),
+                       data = merged_2015)
+summary(spi_x_reg_categ, vcov = vcovHC(spi_x_reg_categ, cluster = "group", type = "HC1"))
+
+
+# Interaction 4: 
+# HA: The impact of SPI on SDG performance varies depending on Democracy Score (cen_di_score: 0-1, continuous)
+spi_x_di_score <- plm(sdg_overall ~ cen_spi_comp*cen_di_score + cen_log_gdppc + I(cen_log_gdppc^2) +
+                        factor(year), 
+                      model = "pooling", 
+                      index = c("country_code", "year"),
+                      data = merged_2015)
+summary(spi_x_di_score, vcov = vcovHC(spi_x_di_score, cluster = "group", type = "HC1"))
+
+# Interaction 5
+# HA: The impact of SPI on SDG performance varies depending on Regime Change Status/Direction
+spi_x_reg_eps <- plm(sdg_overall ~ cen_spi_comp*aut_ep + cen_spi_comp*dem_ep +
+                     cen_log_gdppc + I(cen_log_gdppc^2) + factor(year), 
+                   model = "pooling", 
+                   index = c("country_code", "year"),
+                   data = merged_2015)
+summary(spi_x_reg_eps, vcov = vcovHC(spi_x_reg_eps, cluster = "group", type = "HC1"))
+
+# Final Model 
+final_model <- plm(sdg_overall ~ cen_spi_comp*factor(income_level_recoded) + cen_spi_comp*cen_di_score + cen_log_gdppc + I(cen_log_gdppc^2) + factor(year), 
+                   model = "within", 
+                   index = c("country_code", "year"),
+                   data = merged_2015)
+summary(final_model, vcov = vcovHC(final_model, cluster = "group", type = "HC1"))
+```
+*Interaction 1: GNI Income Classification:* 
+*HA: The impact of SPI on SDG performance varies depending on GNI Classification (income_level_recoded: 1 = Low; 2 = Lower-Middle; 3 = Upper-Middle; 4 = High)*
+[results in doc]...
+
+*Interaction 2: Regime Type (Binary):*
+*HA: The impact of SPI on SDG performance varies depending on Regime Type (Binary: 0 = Autocracy; 1 = Democracy)*
+...
+
+*Interaction 3: Regime Type (Categorical):*
+*HA: The impact of SPI on SDG performance varies depending on Regime Type (Categorical: 0 = Closed Autocracy; 1 = Electoral Autocracy; 2 = Electoral Democracy; 3 = Full Democracy)*
+...
+
+*Interaction 4: Democracy Index (Continuous):*
+*HA: The impact of SPI on SDG performance varies depending on Democracy Score (cen_di_score: 0-1, continuous)*
+...
+
+*Interaction 5: Regime Change Status/Direction:*
+*HA: The impact of SPI on SDG performance varies depending on Regime Change Status/Direction*
+Results: 
+
+
+#### Interactions DF 
+```{r}
+# Create a helper function for tidying plm models with robust SEs
+tidy_plm_robust <- function(model, model_name) {
+  tidy(model, 
+       conf.int = TRUE, 
+       vcov. = vcovHC(model, cluster = "group", type = "HC1")) %>%
+    mutate(model = model_name,
+           n_obs = n_obs)
+}
+
+# Enhanced helper function
+tidy_plm_robust <- function(model, model_name) {
+  tidy_coef <- tidy(model, 
+                    conf.int = TRUE, 
+                    vcov. = vcovHC(model, cluster = "group", type = "HC1")) %>%
+    mutate(model = model_name)
+  
+  # Extract model statistics
+  model_summary <- summary(model)
+  tidy_coef %>%
+    mutate(
+      adj_r_squared = model_summary$r.squared["adjrsq"]
+    )
+}
+
+# Apply tidy_plm_robust() function to all models
+tidy_spi_x_inc_lvl    <- tidy_plm_robust(spi_x_inc_lvl, "Moderator: SPI x Income Level")
+tidy_spi_x_reg_binary <- tidy_plm_robust(spi_x_reg_binary, "Moderator: SPI x Regime Binary")
+tidy_spi_x_reg_categ  <- tidy_plm_robust(spi_x_reg_categ, "Moderator: SPI x Regime Categ")
+tidy_spi_x_di_score   <- tidy_plm_robust(spi_x_di_score, "Moderator: SPI x DI Score")
+tidy_spi_x_reg_eps   <- tidy_plm_robust(spi_x_reg_eps, "Moderator: SPI x Regime Change")
+
+model_n_obs <- tibble(
+  model = c("Moderator: SPI x Income Level", "Moderator: SPI x Regime Binary", 
+            "Moderator: SPI x Regime Categ", "Moderator: SPI x DI Score", "Moderator: SPI x Regime Change"),
+  n_obs = c(nobs(spi_x_inc_lvl), nobs(spi_x_reg_binary),
+            nobs(spi_x_reg_categ), nobs(spi_x_di_score), nobs(spi_x_reg_eps))
+)
+
+# Combine all tidy data frames into one
+all_models_tidy <- bind_rows(tidy_spi_x_inc_lvl, 
+                             tidy_spi_x_reg_binary, 
+                             tidy_spi_x_reg_categ, 
+                             tidy_spi_x_di_score, 
+                             tidy_spi_x_reg_eps) %>%
+  left_join(model_n_obs, by = "model") %>% 
+  select(model, term, estimate, std.error, p.value, adj_r_squared, n_obs, everything()) %>%
+  arrange(model, term)
+
+# Save the tidy data frame to a CSV file
+write_csv(all_models_tidy, "results_csv/interaction_models.csv")
+
+
+# extracting robust standard errors for each interaction model
+rob_se_spi_x_inc_lvl <- coeftest(spi_x_inc_lvl, vcov = vcovHC(spi_x_inc_lvl, cluster = "group", type = "HC1"))
+rob_se_spi_x_reg_binary <- coeftest(spi_x_reg_binary, vcov = vcovHC(spi_x_reg_binary, cluster = "group", type = "HC1"))
+rob_se_spi_x_reg_categ <- coeftest(spi_x_reg_categ, vcov = vcovHC(spi_x_reg_categ, cluster = "group", type = "HC1"))
+#rob_se_spi_x_di_score <- coeftest(spi_x_di_score, vcov = vcovHC(spi_x_di_score, cluster = "group", type = "HC1"))
+rob_se_spi_x_reg_eps <- coeftest(spi_x_reg_eps, vcov = vcovHC(spi_x_reg_eps, cluster = "group", type = "HC1"))
+
+# Create a list of robust standard errors for stargazer
+robust_se_list <- list(
+  rob_se_spi_x_inc_lvl[, 2], 
+  rob_se_spi_x_reg_binary[, 2], 
+  rob_se_spi_x_reg_categ[, 2], 
+  #rob_se_spi_x_di_score[, 2] #,
+  rob_se_spi_x_reg_eps[, 2]
+  )
+          
+stargazer(
+  spi_x_inc_lvl, spi_x_reg_binary, spi_x_reg_categ, #spi_x_di_score,
+  spi_x_reg_eps,
+  se = robust_se_list,
+  type = "html",
+  out = "component_1/figures/pooled_ols_interactions.html",
+  title = "Pooled OLS Interaction Models",
+  align = TRUE,
+  column.labels = c("Income Level", "Regime Binary", "Regime Categ", "Regime Change Episode"),
+  dep.var.labels = "SDG Overall",
+  omit = "factor\\(year\\)",  # Omits year fixed effects from display
+  model.names = FALSE
+)
+
+```
+
+
+## TEST 3b: WB GNI Classifications: income_level ("H", "UM", "LM", "L") 
+#### Disaggregated/Grouped by Development Status:
+Make 4 regression models and then put them all together in a table to compare the slopes and R-sq values.
+```{r}
+# 1. Overall model (all countries)
+overall_lm <- lm(sdg_overall ~ spi_comp + di_score + log_gdppc + population + factor(year),
+                        data = merged_2015)
+#summary(overall_lm)
+coeftest(overall_lm, vcov = vcovHC(overall_lm, type = "HC1")) #Robust SE
+
+# 2. High income countries
+high_inc_lm <- lm(sdg_overall ~ spi_comp + di_score + log_gdppc + population + factor(year),
+                        data = merged_2015 %>% 
+                          filter(income_level == "H"))
+#summary(high_inc_lm)
+coeftest(high_inc_lm, vcov = vcovHC(high_inc_lm, type = "HC1")) #Robust SE
+
+# 3. Upper-middle income countries
+upper_mid_lm <- lm(sdg_overall ~ spi_comp + di_score + log_gdppc + population + factor(year),
+                         data = merged_2015 %>% 
+                           filter(income_level == "UM"))
+#summary(upper_mid_lm)
+coeftest(upper_mid_lm, vcov = vcovHC(upper_mid_lm, type = "HC1")) #Robust SE
+
+# 4. Lower-middle income countries
+lower_mid_lm <- lm(sdg_overall ~ spi_comp + di_score + log_gdppc + population + factor(year),
+                         data = merged_2015 %>% 
+                           filter(income_level == "LM"))
+#summary(lower_mid_lm)
+coeftest(lower_mid_lm, vcov = vcovHC(lower_mid_lm, type = "HC1")) #Robust SE
+
+# 5. Low income countries
+low_inc_lm <- lm(sdg_overall ~ spi_comp + di_score + log_gdppc + population + factor(year),
+                       data = merged_2015 %>% 
+                         filter(income_level == "L"))
+#summary(low_inc_lm)
+coeftest(low_inc_lm, vcov = vcovHC(low_inc_lm, type = "HC1")) #Robust SE
+```
+
+
+### GNI Classifications DF
+```{r echo=FALSE}
+# 1. Overall model
+overall_ct <- coeftest(overall_lm, vcov = vcovHC(overall_lm, type = "HC1"))
+overall_df <- data.frame(
+  model = "overall_lm",
+  term = rownames(overall_ct),
+  estimate = overall_ct[, "Estimate"],
+  std.error = overall_ct[, "Std. Error"],
+  t.statistic = overall_ct[, "t value"],
+  p.value = overall_ct[, "Pr(>|t|)"],
+  n = nobs(overall_lm)
+)
+
+# 2. High income countries
+high_inc_ct <- coeftest(high_inc_lm, vcov = vcovHC(high_inc_lm, type = "HC1"))
+high_inc_df <- data.frame(
+  model = "high_inc_lm",
+  term = rownames(high_inc_ct),
+  estimate = high_inc_ct[, "Estimate"],
+  std.error = high_inc_ct[, "Std. Error"],
+  t.statistic = high_inc_ct[, "t value"],
+  p.value = high_inc_ct[, "Pr(>|t|)"],
+  n = nobs(high_inc_lm)
+)
+
+# 3. Upper-middle income countries
+upper_mid_ct <- coeftest(upper_mid_lm, vcov = vcovHC(upper_mid_lm, type = "HC1"))
+upper_mid_df <- data.frame(
+  model = "upper_mid_lm",
+  term = rownames(upper_mid_ct),
+  estimate = upper_mid_ct[, "Estimate"],
+  std.error = upper_mid_ct[, "Std. Error"],
+  t.statistic = upper_mid_ct[, "t value"],
+  p.value = upper_mid_ct[, "Pr(>|t|)"],
+  n = nobs(upper_mid_lm)
+)
+
+# 4. Lower-middle income countries
+lower_mid_ct <- coeftest(lower_mid_lm, vcov = vcovHC(lower_mid_lm, type = "HC1"))
+lower_mid_df <- data.frame(
+  model = "lower_mid_lm",
+  term = rownames(lower_mid_ct),
+  estimate = lower_mid_ct[, "Estimate"],
+  std.error = lower_mid_ct[, "Std. Error"],
+  t.statistic = lower_mid_ct[, "t value"],
+  p.value = lower_mid_ct[, "Pr(>|t|)"],
+  n = nobs(lower_mid_lm)
+)
+
+# 5. Low income countries
+low_inc_ct <- coeftest(low_inc_lm, vcov = vcovHC(low_inc_lm, type = "HC1"))
+low_inc_df <- data.frame(
+  model = "low_inc_lm",
+  term = rownames(low_inc_ct),
+  estimate = low_inc_ct[, "Estimate"],
+  std.error = low_inc_ct[, "Std. Error"],
+  t.statistic = low_inc_ct[, "t value"],
+  p.value = low_inc_ct[, "Pr(>|t|)"],
+  n = nobs(low_inc_lm)
+)
+
+# Combine all results
+gni_classes_ols <- bind_rows(
+  overall_df,
+  high_inc_df,
+  upper_mid_df,
+  lower_mid_df,
+  low_inc_df
+)
+
+attr(gni_classes_ols $std.error, "label") <- "Robust Std. Errors Adjusted"
+attr(gni_classes_ols $t.statistic, "label") <- "Robust Std. Errors Adjusted"
+attr(gni_classes_ols $p.value, "label") <- "Robust Std. Errors Adjusted"
+
+gni_classes_ols
+
+#interactive table for side access 
+#datatable(gni_classes_ols, caption = "Regression Results, by GNI Country Classifications")
+
+# write to directory 
+write.csv(gni_classes_ols, "component_1/results_csv/gni_classes_ols.csv")
+```
+
+
+### Visualizing Slopes: plotting multiple regression - by subgroup
+```{r echo=FALSE}
+viz_gni_class <- ggplot(data = merged_2015, aes(x = spi_comp, 
+                                           y = sdg_overall, 
+                                           color = income_level_lab)) +
+  geom_point(alpha = 0.25, size = 0.75) + 
+  # Overall regression line (black)
+  geom_smooth(aes(group = 1), 
+              method = "lm", 
+              linewidth = 0.75, 
+              se = FALSE, 
+              color = "black") +
+  # Group-specific regression lines
+  geom_smooth(method = "lm", 
+              linewidth = 0.65, 
+              se = FALSE) +
+  scale_color_manual(
+    values = c("High Income Countries" = "#1D6A96", 
+               "Upper-Middle Income Countries" = "#4CB5AE",
+               "Lower-Middle Income Countries" = "#F3A738",
+               "Low Income Countries" = "#C02942")
+  ) +
+  labs(title = "Relationship between SPI and SDG by World Bank Income Classification",
+       x = "Statistical Performance Indicators (SPI)",
+       y = "Sustainable Development Goals (SDG)",
+       color = "Income Classification") +
+  theme_bw() 
+
+viz_gni_class
+#ggplotly(viz_gni_class)
+
+# Save to specific folder
+ggsave("component_1/figures/gni_subgroups_ols.png", viz_gni_class, width = 10, height = 6)
+```
+[more results TBD]
+
+
+#### Coefficient & Interval Plot
+```{r echo=FALSE}
+# New fd with SPI coefficients data
+spi_plot_data <- data.frame(
+  model = c("overall_lm", "high_inc_lm", "upper_mid_lm", "lower_mid_lm", "low_inc_lm"),
+  estimate = c(0.286414727883271, 0.355563975838364, 0.174313752024353, 0.382217438772999, 0.169651614020134),
+  std.error = c(0.0156271299809294, 0.0170293332032076, 0.0139294904502819, 0.0262707606446246, 0.0441323334102258)
+)
+
+# Calculate confidence intervals
+spi_plot_data <- spi_plot_data %>%
+  mutate(
+    CI_lower = estimate - 1.96 * std.error,
+    CI_upper = estimate + 1.96 * std.error
+  )
+
+# Set model order
+model_order <- c("low_inc_lm", "lower_mid_lm", "upper_mid_lm", "high_inc_lm", "overall_lm")
+spi_plot_data$model <- factor(spi_plot_data$model, levels = model_order)
+
+# Create the coefficient plot
+coef_inter_spi_plot <- ggplot(spi_plot_data, aes(x = estimate, y = model)) +
+  geom_point(size = 3, color = "dodgerblue") +
+  geom_errorbarh(aes(xmin = CI_lower, xmax = CI_upper), 
+                 height = 0.2, 
+                 color = "dodgerblue") +
+  labs(
+    title = "Coefficient Estimates with 95% Confidence Intervals for SPI by Income Group Models",
+    x = "Coefficient Estimate for SPI",
+    y = NULL
+  ) +
+  theme_minimal() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  scale_x_continuous(limits = c(0, 0.45)) +
+  scale_y_discrete(labels = c("low_inc_lm" = "Low Income", 
+                              "lower_mid_lm" = "Lower-Middle Income",
+                              "upper_mid_lm" = "Upper-Middle Income", 
+                              "high_inc_lm" = "High Income",
+                              "overall_lm" = "Overall"))
+
+coef_inter_spi_plot
+
+ggsave("component_1/figures/coef_inter_spi_plot.png", coef_inter_spi_plot, width = 9, height = 5)
+```

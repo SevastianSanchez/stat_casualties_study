@@ -1,0 +1,141 @@
+---
+title: "comp2_stage2_functional_form"
+output: html_document
+---
+
+```{r}
+knitr::opts_chunk$set(
+  tidy = TRUE,
+  tidy.opts = list(width.cutoff = 60) 
+)
+```
+
+##*[IGNORE ALL BELOW]*
+# MODEL MISSPECIFICATION CHECKS [Stage 2]
+================================================================================
+## RESET Test for Misspecification [STAGE 2]
+[ALL VARIABLES NOT UPDATED TO MATCH PRE-MADE LAGS]
+```{r eval=FALSE, include=FALSE}
+ols_sdg_spi <- lm(sdg_overall ~ spi_comp_lag1 + di_score_lag1 + log_gdppc + factor(income_level_recoded) + factor(year), data = panel_data) # regular linear model
+fd_sdg_spi <- lm(sdg_overall ~ spi_diff_lag1 + di_diff_lag1 + log_gdppc_diff + factor(income_level_recoded), data = fd_data)
+fe_sdg_spi <- lm(sdg_overall ~ spi_comp_lag1 + di_score_lag1 + log_gdppc + factor(income_level_recoded) + factor(year) + factor(country_code), data = panel_data)
+
+# Run RESET tests w/ Robust SEs [Stage 2]
+resettest(ols_sdg_spi, power = 2:3, type = "regressor", 
+          vcov = function(x) vcovHC(x, cluster = "group", type = "HC1"))
+resettest(fd_sdg_spi, power = 2:3, type = "regressor",
+          vcov = function(x) vcovHC(x, cluster = "group", type = "HC1"))
+resettest(fe_sdg_spi, power = 2:3, type = "regressor",
+          vcov = function(x) vcovHC(x, cluster = "group", type = "HC1"))
+
+# Saving results to a dataframe
+s2_reset_results <- data.frame(
+  model = c("ols_sdg_spi", "fd_sdg_spi", "fe_sdg_spi"),
+  F_statistic = c(resettest(ols_sdg_spi, power = 2:3, type = "regressor", 
+                             vcov = function(x) vcovHC(x, cluster = "group", type = "HC1"))$statistic,
+                  resettest(fd_sdg_spi, power = 2:3, type = "regressor",
+                             vcov = function(x) vcovHC(x, cluster = "group", type = "HC1"))$statistic,
+                  resettest(fe_sdg_spi, power = 2:3, type = "regressor",
+                             vcov = function(x) vcovHC(x, cluster = "group", type = "HC1"))$statistic),
+  p_value = c(resettest(ols_sdg_spi, power = 2:3, type = "regressor", 
+                        vcov = function(x) vcovHC(x, cluster = "group", type = "HC1"))$p.value,
+              resettest(fd_sdg_spi, power = 2:3, type = "regressor",
+                        vcov = function(x) vcovHC(x, cluster = "group", type = "HC1"))$p.value,
+              resettest(fe_sdg_spi, power = 2:3, type = "regressor",
+                        vcov = function(x) vcovHC(x, cluster = "group", type = "HC1"))$p.value)
+)
+print(s2_reset_results)
+
+# Save the results to a CSV file
+write.csv(s2_reset_results, file = "results_csv/s2_reset_results.csv", row.names = FALSE)
+```
+Results from the reset test indicate that the null hypothesis of  is rejected for all models, suggesting potential non-linearity or omitted variable bias in the models.
+
+
+## Stepwise Check: Applying Polynomial Terms [Stage 2]
+For this section, all continuous predictors (DI, SPI, Log(GDP)) in non-linear models are centered to avoid multicollinearity issues. 
+
+- **H0:** The relationship between SPI and SDG performance is linear.
+- **H1:** The relationship between SPI and SDG performance is non-linear (quadratic or cubic).
+```{r eval=FALSE, include=FALSE}
+# No quadratic Terms Applied - Baseline [SIGNIFICANT DI]
+fe_sdg_spi_base <- plm(formula = sdg_overall ~ dplyr::lag(cen_spi_comp, n = 1) + dplyr::lag(cen_di_score, n = 1) + cen_log_gdppc + factor(income_level_recoded) + factor(year), 
+  index = c("country_code", "year"),
+  data = panel_data,
+  model = "within")
+rob_sum_base <- summary(fe_sdg_spi_base, vcov = vcovHC(fe_sdg_spi_base, cluster = "group", type = "HC1"))
+
+# + Quadratic term for SPI [SIGNIFICANT SPI QUAD]
+fe_quads_s2_m2 <- plm(formula =
+  sdg_overall ~ dplyr::lag(cen_spi_comp, n = 1) + dplyr::lag(cen_spi_comp_quad, n = 1) + dplyr::lag(cen_di_score, n = 1) + cen_log_gdppc + factor(income_level_recoded) + factor(year),
+  index = c("country_code", "year"),
+  data = panel_data,
+  model = "within")
+rob_sum_m2 <- summary(fe_quads_s2_m2, vcov = vcovHC(fe_quads_s2_m2, cluster = "group", type = "HC1"))
+
+# + Quadratic terms for SPI and DI
+fe_quads_s2_m3 <- plm(formula = sdg_overall ~ dplyr::lag(cen_spi_comp, n = 1) + dplyr::lag(cen_spi_comp_quad, n = 1) + dplyr::lag(cen_di_score, n = 1) + dplyr::lag(cen_di_score_quad, n = 1) + cen_log_gdppc + factor(income_level_recoded) + factor(year),
+               model = "within", 
+               index = c("country_code", "year"),
+               data = panel_data)
+rob_sum_m3 <- summary(fe_quads_s2_m3, vcov = vcovHC(fe_quads_s2_m3, cluster = "group", type = "HC1"))
+
+# + Cubic terms for SPI & DI 
+fe_cubics_s2_m4 <- plm(formula = sdg_overall ~ dplyr::lag(cen_spi_comp, n = 1) + dplyr::lag(cen_spi_comp_quad, n = 1) + dplyr::lag(cen_spi_comp_cubic, n = 1) + dplyr::lag(cen_di_score, n = 1) + dplyr::lag(cen_di_score_quad, n = 1) + dplyr::lag(cen_di_score_cubic, n = 1) + cen_log_gdppc + factor(income_level_recoded) + factor(year),
+               model = "within", 
+               index = c("country_code", "year"),
+               data = panel_data)
+rob_sum_m4 <- summary(fe_cubics_s2_m4, vcov = vcovHC(fe_cubics_s2_m4, cluster = "group", type = "HC1"))
+
+# Extracting robust standard errors for each model
+rob_se_base <- coeftest(fe_sdg_spi_base, vcov = vcovHC(fe_sdg_spi_base, cluster = "group", type = "HC1"))
+rob_se_m2  <- coeftest(fe_quads_s2_m2, vcov = vcovHC(fe_quads_s2_m2, cluster = "group", type = "HC1"))
+rob_se_m3  <- coeftest(fe_quads_s2_m3, vcov = vcovHC(fe_quads_s2_m3, cluster = "group", type = "HC1"))
+rob_se_m4 <- coeftest(fe_cubics_s2_m4, vcov = vcovHC(fe_cubics_s2_m4, cluster = "group", type = "HC1"))
+
+# stargazer table 
+# [RERUN FULL CHUNK TO RESET NAMES FOR ACURATE RESULTS]
+stargazer(fe_sdg_spi_base, fe_quads_s2_m2, fe_quads_s2_m3, fe_cubics_s2_m4, 
+          se = list(rob_se_base[, 2], rob_se_m2[, 2], rob_se_m3[, 2], rob_se_m4[, 2]
+                    ),
+          title = "Applying Polynomial Terms to Stage 2 Models",
+          align = TRUE,
+          dep.var.labels = "SDG Overall Score",
+          column.labels = c("FE Base", "Quad SPI", "Quad SPI+DI", "Cubic SPI+DI"),
+          #covariate.labels = c("SPI", "SPI Squared", "DI", "DI Squared",
+          #                     "Log GDPpc", "Intercept"),
+          notes = "All models apply fixed effects. Robust standard errors clustered by country in parentheses",
+          type = "html", # Change to "latex" for LaTeX output or "html" for Word
+          report = "vcs*", # Shows significance stars and standard errors
+          model.numbers = FALSE,
+          keep.stat = c("n", "rsq", "adj.rsq"),
+          out = "figures/poly_s2_models.html") #saved as html
+```
+
+# Model Selection: Adj. R^2 & AIC/BIC [Stage 2]
+```{r eval=FALSE, include=FALSE}
+# AIC/BIC function
+source('function/plm_aic_bic_function.R')
+
+# AIC/BIC for both models (sourcing function for plm models)
+# [RERUN FULL CHUNK TO RESET NAMES FOR ACURATE RESULTS]
+plm_aic_bic(rob_sum_base) # regular FE
+plm_aic_bic(rob_sum_m2) # quadratic SPI FE
+plm_aic_bic(rob_sum_m3) # quadratic SPI + DI FE
+plm_aic_bic(rob_sum_m4) # cubic SPI + DI FE
+```
+**M1: standard FE**
+AIC: 2324.805
+BIC: 2447.637 #lowest BIC
+
+**M2: quadratic SPI, FE**
+AIC: 2307.741 #lowest AIC
+BIC: 2451.045
+
+**M3: quadratic SPI + DI, FE**
+AIC: 2313.891
+BIC: 2477.667
+
+**M4: cubic SPI + DI, FE**
+AIC: 2324.069
+BIC: 2528.789

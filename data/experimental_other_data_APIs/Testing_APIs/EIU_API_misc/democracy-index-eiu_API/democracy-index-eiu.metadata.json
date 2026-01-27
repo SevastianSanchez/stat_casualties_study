@@ -1,0 +1,34 @@
+{
+  "chart": {
+    "title": "Democracy index",
+    "subtitle": "Based on the expert estimates and index by the [Economist Intelligence Unit (2006-2024)](#dod:economist-intelligence-unit). It combines information on the extent to which citizens can choose their political leaders in free and fair elections, enjoy civil liberties, prefer democracy over other political systems, can and do participate in politics, and have a functioning government that acts on their behalf. It ranges from 0 to 10 (most democratic).",
+    "citation": "Economist Intelligence Unit (2006-2024)",
+    "originalChartUrl": "https://ourworldindata.org/grapher/democracy-index-eiu?v=1&csvType=full&useColumnShortNames=false",
+    "selection": [
+      "Argentina",
+      "Australia",
+      "Botswana",
+      "China"
+    ]
+  },
+  "columns": {
+    "Democracy score": {
+      "titleShort": "Democracy score",
+      "titleLong": "Democracy score",
+      "descriptionShort": "Extent to which citizens can choose their political leaders in free and fair elections, enjoy civil liberties, prefer democracy over other political systems, can and do participate in politics, and have a functioning government that acts on their behalf. It ranges from 0 to 10 (most democratic).",
+      "descriptionProcessing": "Values for continents have been obtained by averaging the values of the countries in the continent.",
+      "unit": "",
+      "timespan": "2006-2024",
+      "type": "Numeric",
+      "owidVariableId": 1014800,
+      "shortName": "democracy_eiu",
+      "lastUpdated": "2025-03-05",
+      "nextUpdate": "2026-03-05",
+      "citationShort": "Economist Intelligence Unit (2006-2024) – processed by Our World in Data",
+      "citationLong": "Economist Intelligence Unit (2006-2024) – processed by Our World in Data. “Democracy score” [dataset]. Economist Intelligence Unit, “Democracy Index 2021: The China challenge”; Economist Intelligence Unit, “Democracy Index 2022: Frontline democracy and the battle for Ukraine”; Economist Intelligence Unit, “Democracy Index 2023: Age of Conflict”; Economist Intelligence Unit, “Democracy Index 2024: What's wrong with representative democracy?”; Gapminder, “Democracy Index v4” [original data].",
+      "fullMetadata": "https://api.ourworldindata.org/v1/indicators/1014800.metadata.json"
+    }
+  },
+  "dateDownloaded": "2025-04-12",
+  "activeFilters": {}
+}

@@ -1,0 +1,9 @@
+"","direction","cause","effect","lag_order","zbar","p_value","has_warning"
+"1","spi_comp ~ di_score","di_score","spi_comp",1,19.265,"p-value < 2.2e-16",FALSE
+"2","spi_comp ~ di_score","di_score","spi_comp",2,128135,"p-value < 2.2e-16",FALSE
+"3","di_score ~ spi_comp","spi_comp","di_score",1,15.559,"p-value < 2.2e-16",FALSE
+"4","di_score ~ spi_comp","spi_comp","di_score",2,6237.9,"p-value < 2.2e-16",FALSE
+"5","sdg_overall ~ spi_comp","spi_comp","sdg_overall",1,24.285,"p-value < 2.2e-16",FALSE
+"6","sdg_overall ~ spi_comp","spi_comp","sdg_overall",2,5824.2,"p-value < 2.2e-16",FALSE
+"7","spi_comp ~ sdg_overall","sdg_overall","spi_comp",1,28.998,"p-value < 2.2e-16",FALSE
+"8","spi_comp ~ sdg_overall","sdg_overall","spi_comp",2,3498.3,"p-value < 2.2e-16",FALSE

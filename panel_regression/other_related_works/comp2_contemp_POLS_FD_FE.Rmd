@@ -1,0 +1,110 @@
+---
+title: "Comp2_non_lagged"
+output: html_document
+---
+```{r}
+# set working directory
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+
+#load libraries/packages
+source("packages.R")
+
+# load data
+source("Comp2_panel_wrangling.R")
+```
+
+## TOTAL EFFECT: SDG ~ DI ## 
+```{r}
+# POLS 
+pols_sdg_di <- plm(
+  formula = sdg_overall ~ di_score + log_gdppc + factor(year),
+  index = c("country_code", "year"),
+  data = panel_data,
+  model = "pooling"
+)
+summary(pols_sdg_di, vcov = vcovHC(pols_sdg_di, cluster = "group", type = "HC1")) # Robust SEs
+
+#FD
+fd_sdg_di <- plm(
+  formula = sdg_overall ~ di_score + log_gdppc,
+  index = c("country_code", "year"),
+  data = fd_data, 
+  model = "fd"
+) 
+summary(fd_sdg_di, vcov = vcovHC(fd_sdg_di, cluster = "group", type = "HC1"))
+
+#FE
+fe_sdg_di <- plm(
+  formula = sdg_overall ~ di_score + log_gdppc,
+  index = c("country_code", "year"),
+  data = panel_data,
+  model = "within",
+  effect = "twoways"
+)
+summary(fe_sdg_di, vcov = vcovHC(fe_sdg_di, cluster = "group", type = "HC1")) # Robust SEs
+```
+
+## STAGE 1: SDG ~ SPI ## 
+```{r}
+# POLS 
+pols_sdg_spi <- plm(
+  formula = sdg_overall ~ spi_comp + di_score + log_gdppc + factor(year),
+  index = c("country_code", "year"),
+  data = panel_data,
+  model = "pooling"
+)
+summary(pols_sdg_spi, vcov = vcovHC(pols_sdg_spi, cluster = "group", type = "HC1")) # Robust SEs
+
+#FD
+fd_sdg_spi <- plm(
+  formula = sdg_overall ~ spi_comp + di_score + log_gdppc,
+  index = c("country_code", "year"),
+  data = fd_data, 
+  model = "fd"
+) 
+summary(fd_sdg_spi, vcov = vcovHC(fd_sdg_spi, cluster = "group", type = "HC1"))
+
+#FE
+fe_sdg_spi <- plm(
+  formula = sdg_overall ~ spi_comp + di_score + log_gdppc,
+  index = c("country_code", "year"),
+  data = panel_data,
+  model = "within",
+  effect = "twoways"
+)
+summary(fe_sdg_spi, vcov = vcovHC(fe_sdg_spi, cluster = "group", type = "HC1")) # Robust SEs
+```
+
+#### STAGE 2: SDG ~ SPI ####
+```{r}
+# POLS
+pols_sdg_spi <- plm(
+  formula = sdg_overall ~ spi_comp + di_score + log_gdppc + factor(year),
+  index = c("country_code", "year"),
+  data = panel_data,
+  model = "pooling"
+)
+summary(pols_sdg_spi, vcov = vcovHC(pols_sdg_spi, cluster = "group", type = "HC1")) # Robust SEs
+
+#FD
+fd_sdg_spi <- plm(
+  formula = sdg_overall ~ spi_comp + di_score + log_gdppc,
+  index = c("country_code", "year"),
+  data = fd_data, 
+  model = "fd"
+) 
+summary(fd_sdg_di, vcov = vcovHC(fd_sdg_di, cluster = "group", type = "HC1"))
+
+#FE
+fe_sdg_spi <- plm(
+  formula = sdg_overall ~ spi_comp + di_score + log_gdppc,
+  index = c("country_code", "year"),
+  data = panel_data,
+  model = "within", 
+  effect = "twoways" 
+)
+summary(fe_sdg_spi, vcov = vcovHC(fe_sdg_spi, cluster = "group", type = "HC1")) # Robust SEs
+```
+
+
+

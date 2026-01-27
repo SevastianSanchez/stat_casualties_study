@@ -1,0 +1,337 @@
+---
+title: "Comp3_interactions"
+author: "Sevastian Sanchez"
+date: "`r Sys.Date()`"
+output:
+  pdf_document:
+    toc: no
+    toc_depth: '3'
+    number_sections: yes
+  html_document:
+    toc: yes
+    toc_depth: 3
+    toc_float: yes
+    number_sections: yes
+    highlight: tango
+    theme: default
+    fig_caption: yes
+    df_print: tibble
+  word_document: default
+  urlcolor: blue
+---
+```{r}
+knitr::opts_chunk$set(
+  echo = TRUE, warning = FALSE, message = FALSE,
+  tidy = TRUE, tidy.opts = list(width.cutoff = 60) 
+)
+```
+
+# Set up and Wrangling 
+```{r}
+# set working directory
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+
+#load libraries/packages
+source("packages.R")
+
+# load data
+source("Comp2_panel_wrangling.R") # using comp2 data 
+```
+Component 2 data is employed in Component 3, with additional variables utilized for subgrouping in this analysis.
+
+# Data Preparation
+```{r}
+# load & apply function
+source("wrangling/eiu_regime_change_vars.R")
+panel_data_comp3 <- eiu_identify_regime_changes(panel_data)
+rm(panel_data) # to free up memory
+
+# View structure of the updated data
+str(panel_data_comp3)
+
+# summary of regime changes
+REGIME_CH_INSTANCES <- panel_data_comp3 %>%
+  filter(eiu_regch_event != "No Transition" | eiu_dem_ep == 1 | eiu_aut_ep == 1) %>%
+  select(country_code, country_name, year, di_score, di_score_lag1, di_score_diff, 
+         eiu_regch_event, eiu_dem_ep, eiu_aut_ep) %>%
+  arrange(country_code, year)
+summary(REGIME_CH_INSTANCES)
+
+# How many instances of democratization in total?
+nrow(REGIME_CH_INSTANCES %>% filter(eiu_regch_event == "Democratized"))
+
+# How many instances of autocratization in total?
+nrow(REGIME_CH_INSTANCES %>% filter(eiu_regch_event == "Autocratized"))
+```
+
+```{r}
+# list of all countries in REGIME_CH_INSTANCES & frequency in a dataframe
+REGIME_CH_COUNTS <- REGIME_CH_INSTANCES %>%
+  group_by(country_code, country_name) %>%
+  summarise(
+    instances = n(),
+    democratizations = sum(eiu_regch_event == "Democratized", na.rm = TRUE),
+    autocratizations = sum(eiu_regch_event == "Autocratized", na.rm = TRUE),
+    dem_ep_events = sum(eiu_dem_ep == 1, na.rm = TRUE),
+    aut_ep_events = sum(eiu_aut_ep == 1, na.rm = TRUE)
+  ) %>% 
+  ungroup()
+
+# How many/which countries democratized at least once?
+REGIME_CH_COUNTS %>% 
+  filter(democratizations > 0) %>%
+  select(country_code, country_name, democratizations)
+
+# How many/which countries autocratized at least once?
+REGIME_CH_COUNTS %>% 
+  filter(autocratizations > 0) %>%
+  select(country_code, country_name, autocratizations)
+```
+
+## checking for NA values in key variables
+```{r}
+# Check for any NA values in key variables
+sapply(panel_data_comp3 %>% 
+         select(spi_comp, di_score, income_level_recoded,
+           eiu_regime_type, eiu_regch_event, eiu_dem_ep, eiu_aut_ep, eiu_has_aut_ep, eiu_has_dem_ep, eiu_has_both, eiu_has_neither, eiu_democratized, eiu_autocratized, eiu_stable), 
+       function(x) sum(is.na(x)))
+```
+
+## filtering out transition regimes & keeping only stable regimes 
+```{r}
+# removing transitioning regimes
+panel_data_stable <- panel_data_comp3 %>%
+  dplyr::filter(eiu_stable == 1) 
+
+# Subset for democracies
+sub_dem <- panel_data_stable %>%
+  dplyr::filter(eiu_regime_type == "Democracy") 
+
+# Subset for autocracies
+sub_aut <- panel_data_stable %>%
+  dplyr::filter(eiu_regime_type == "Autocracy")
+```
+
+## Converting to panel data frame
+```{r}
+# create plm pdataframe with stable data 
+panel_data_stable <- pdata.frame(panel_data_stable, index = c("country_code", "year"))
+```
+
+# Only Stable Regimes: Two-Way Fixed Effects Model
+```{r}
+# Load the panel data
+FE_testing <- plm(formula = spi_comp ~ di_score 
+                  + plm::lag(di_score, 1) 
+                  + plm::lag(di_score, 2) 
+                  + plm::lag(di_score, 3)
+                  + log_gdppc 
+                  + factor(year),
+                  model = "within", 
+                  data = panel_data_stable)
+summary(FE_testing, vcov = vcovHC(FE_testing, cluster = "group", type = "HC1"))
+```
+
+# Only Democratic Regimes: Two-Way Fixed Effects Model
+```{r}
+# create plm pdataframe with democratic country data 
+sub_dem <- pdata.frame(sub_dem, index = c("country_code", "year"))
+
+# Load the panel data
+FE_testing <- plm(formula = spi_comp ~ di_score 
+                  + plm::lag(di_score, 1) 
+                  + plm::lag(di_score, 2) 
+                  + plm::lag(di_score, 3)
+                  + log_gdppc 
+                  + factor(year),
+                  model = "within", 
+                  data = sub_dem)
+summary(FE_testing, vcov = vcovHC(FE_testing, cluster = "group", type = "HC1"))
+```
+
+# Only Autocratic Regimes: Two-Way Fixed Effects Model
+```{r}
+# create plm pdataframe with autocratic country data 
+sub_aut <- pdata.frame(sub_aut, index = c("country_code", "year"))
+
+# Load the panel data
+FE_testing <- plm(formula = spi_comp ~ di_score 
+                  + plm::lag(di_score, 1) 
+                  + plm::lag(di_score, 2) 
+                  + plm::lag(di_score, 3)
+                  + log_gdppc 
+                  + factor(year),
+                  model = "within", 
+                  data = sub_aut)
+summary(FE_testing, vcov = vcovHC(FE_testing, cluster = "group", type = "HC1"))
+```
+
+# Interactions: GNI Income Classification [Stage 1]
+*H0:* NUll, the impact of DI on SPI Performance does NOT vary depending on GNI Classification 
+*HA:* The impact of DI on SPI performance varies depending on GNI Classification
+
+**Recoded Moderator Variables [income_level_recoded]:**
+income_level_recoded: 1 = Low; 2 = Lower-Middle; 3 = Upper-Middle; 4 = High
+
+**Quick Counts**
+```{r}
+# income_level_recoded 
+table(panel_data_stable$income_level_recoded)
+```
+
+## Stable Regimes, Moderator = GNI Income Level
+```{r}
+int_model_1 <- plm(formula = spi_comp ~ di_score*factor(income_level_recoded) 
+                  + factor(year),
+                  model = "within",
+                  data = panel_data_stable)
+summary(int_model_1, vcov = vcovHC(int_model_1, cluster = "group", type = "HC1"))
+```
+Result: No interactions are statistically significant.
+
+## Democratic Regimes, Moderator = GNI Income Level
+```{r}
+int_model_2 <- plm(formula = spi_comp ~ di_score*factor(income_level_recoded) 
+                  + factor(year),
+                  model = "within",
+                  data = sub_dem)
+summary(int_model_2, vcov = vcovHC(int_model_2, cluster = "group", type = "HC1"))
+```
+Results: No interactions are statistically significant.
+
+## Autocratic Regimes, Moderator = GNI Income Level
+```{r}
+int_model_3 <- plm(formula = spi_comp ~ di_score*factor(income_level_recoded) 
+                  + factor(year),
+                  model = "within",
+                  data = sub_aut)
+summary(int_model_3, vcov = vcovHC(int_model_3, cluster = "group", type = "HC1"))
+```
+Results: 'Computationally signular -- so, no interactions are statistically significant.
+
+## Extracting & Saving Results
+```{r}
+# Robust Results Extraction 
+tidy_plm_robust <- function(model, model_name) {
+  tidy_coef <- tidy(model, 
+                    conf.int = TRUE, 
+                    vcov. = vcovHC(model, cluster = "group", type = "HC1")) %>%
+    mutate(model = model_name)
+  
+  # Extract model statistics
+  model_summary <- summary(model)
+  tidy_coef %>%
+    mutate(
+      adj_r_squared = model_summary$r.squared["adjrsq"]
+    )
+}
+
+# Apply tidy_plm_robust() function to all models
+int_model_1_results    <- tidy_plm_robust(int_model_1, "Stable Regimes: DI x Income Level")
+int_model_2_results <- tidy_plm_robust(int_model_2, "Democracies: DI x Income Level")
+int_model_3_results  <- tidy_plm_robust(int_model_3, "Autocracies: DI x Income Level")
+
+model_n_obs <- tibble(
+  model = c("Moderator: DI x Income Level", "Moderator: DI x Regime Type Binary", 
+            "Moderator: DI x Regime Change Episode (aut_ep & dem_ep)"),
+  n_obs = c(nobs(int_model_1), nobs(int_model_2), nobs(int_model_3))
+)
+
+# Combine all tidy data frames into one
+all_models_tidy <- bind_rows(int_model_1_results, 
+                             int_model_2_results, 
+                             int_model_3_results) %>%
+  left_join(model_n_obs, by = "model") %>% 
+  select(model, term, estimate, std.error, p.value, adj_r_squared, n_obs, everything()) %>%
+  arrange(model, term)
+
+# Save the tidy data frame to a CSV file
+write_csv(all_models_tidy, "component_3/figures/inc_lvl_interactions.csv")
+
+# extracting robust standard errors for each interaction model
+rob_se_int_model_1 <- coeftest(int_model_1, vcov = vcovHC(int_model_1, cluster = "group", type = "HC1"))
+rob_se_int_model_2 <- coeftest(int_model_2, vcov = vcovHC(int_model_2, cluster = "group", type = "HC1"))
+rob_se_int_model_3 <- coeftest(int_model_3, vcov = vcovHC(int_model_3, cluster = "group", type = "HC1"))
+
+# Creating list of robust standard errors for stargazer
+robust_se_list <- list(
+  rob_se_int_model_1[, 2], 
+  rob_se_int_model_2[, 2], 
+  rob_se_int_model_3[, 2]
+  )
+ 
+# stargazer output         
+stargazer(
+  int_model_1, int_model_2, int_model_3, 
+  se = robust_se_list,
+  type = "html",
+  out = "figures/interact_s1_models.html",
+  report = "vcs*",
+  title = "Interaction Models: DI x GNI Income Level by Regime Type",
+  align = TRUE,
+  dep.var.labels = "SDG Overall",
+  column.labels = c("DI x Income Level", "DI x Regime Type (Binary: Autocracy)", "DI x Regime Change Episode"),
+  omit = "factor\\(year\\)",  # Omits year fixed effects from display
+  model.names = FALSE
+)
+```
+
+
+```{r}
+# POLS
+int_model_test1 <- plm(formula = spi_comp ~ di_score*factor(income_level_recoded),
+                  model = "pooling",
+                  data = panel_data_stable)
+summary(int_model_test1, vcov = vcovHC(int_model_test1, cluster = "group", type = "HC1"))
+
+# FE
+int_model_test2 <- plm(formula = spi_comp ~ di_score*factor(income_level_recoded),
+                  model = "within",
+                  data = panel_data_stable)
+summary(int_model_test2, vcov = vcovHC(int_model_test2, cluster = "group", type = "HC1"))
+```
+
+
+### Partial F Test for Interaction Terms
+```{r}
+# Partial F Test for Interaction models [FIGURE OUT WHY IS NOT WORKINGGG]
+## This is the right approach according to the lecture!!!
+
+# Partial F Test 1: Stable Regimes vs Democratic Regimes
+partial_f_test1 <- pFtest(int_model_test1, int_model_test2)
+partial_f_test1
+
+# Partial F Test 2: Stable Regimes vs Autocratic Regimes
+partial_f_test2 <- pFtest(int_model_1, int_model_3)
+partial_f_test2
+```
+
+----------------------------------------------
+# Interaction Effects [Stage 2]
+*H0:* NUll, the impact of SPI on SDG Performance does NOT vary depending on GNI Income Classification 
+*H1:* The impact of SPI on SDG Performance varies depending on GNI Income Classification 
+
+**Recoded Moderator Variables [income_level_recoded]**
+income_level_recoded: 1 = Low; 2 = Lower-Middle; 3 = Upper-Middle; 4 = High
+```{r}
+# Interaction 1: SPI x GNI Class (Stable Regimes)
+# HA: The impact of SPI on SDG performance among stable countries varies depending on GNI Income Level
+spi_x_inc_lvl <- plm(formula = sdg_overall ~ spi_comp*factor(income_level_recoded) + di_score + factor(year),
+                     model = "within", 
+                     data = panel_data_stable)
+summary(spi_x_inc_lvl, vcov = vcovHC(spi_x_inc_lvl, cluster = "group", type = "HC1"))
+
+# Interaction 2: SPI x GNI Class (Democracies)
+# HA: The impact of SPI on SDG performance among democracies varies depending on GNI Income Level
+spi_x_di_score <- plm(formula = sdg_overall ~ spi_comp*factor(income_level_recoded) + di_score + factor(year),
+                      model = "within", 
+                      data = sub_dem)
+summary(spi_x_di_score, vcov = vcovHC(spi_x_di_score, cluster = "group", type = "HC1"))
+
+# Interaction 3: SPI x GNI Class (Autocracies)
+# HA: The impact of SPI on SDG performance among autocracies varies depending on GNI Income Level
+spi_x_di_score <- plm(formula = sdg_overall ~ spi_comp*factor(income_level_recoded) + di_score + factor(year),
+                      model = "within", 
+                      data = sub_aut)
+summary(spi_x_di_score, vcov = vcovHC(spi_x_di_score, cluster = "group", type = "HC1"))
+```

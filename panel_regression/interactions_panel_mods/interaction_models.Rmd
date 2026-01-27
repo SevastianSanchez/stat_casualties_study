@@ -1,0 +1,93 @@
+---
+title: "Interaction_models"
+output: html_document
+---
+
+```{r}
+# set working directory
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+
+#load libraries/packages
+source("packages.R")
+
+# load data
+source("Comp2_panel_wrangling.R")
+
+# load custom function for regime change variables [MUST LOAD BEFORE DATA]
+source("wrangling/creating_regime_variables/identify_regime_change_main.R")
+
+# Regime Change Identification Function [using EIU classifications]
+panel_data_reg_eps <- identify_regime_change(panel_data)
+
+```
+
+```{r}
+# Check results for specific countries
+panel_data_w_transitions %>%
+  filter(country_code %in% c("HUN", "TUR", "POL")) %>%
+  select(country_name, year, di_score, regime_type_eiu, regime_type_eiu_lag1,
+         regime_changed, regime_change_direction, eiu_aut_ep, eiu_aut_ep_ext) %>%
+  print(n = 50)
+
+# Summary of transitions
+panel_data_w_transitions %>%
+  filter(regime_changed == 1) %>%
+  group_by(country_name, year) %>%
+  summarize(
+    from = first(regime_type_eiu_lag1),
+    to = first(regime_type_eiu),
+    direction = first(regime_change_direction),
+    .groups = "drop"
+  ) %>%
+  arrange(year, country_name)
+```
+
+# TWO-WAY FIXED EFFECTS MODELS WITH INTERACTIONS AND LAGS (k=2)
+```{r}
+# set as pdata.frame
+panel_data_w_transitions <- pdata.frame(panel_data_w_transitions, 
+                                        index = c("country_code", "year"))
+pdim(panel_data_w_transitions) # check panel dimensions
+
+## STAGE I 
+fe_s1_interact <- plm(
+  formula = spi_comp ~ di_score * factor(eiu_aut_ep_ext) 
+  + lag(di_score, 1) * factor(eiu_aut_ep)
+  + lag(di_score, 2) * factor(eiu_aut_ep)
+  + log_gdppc 
+  + factor(year),
+  data = panel_data_w_transitions,
+  subset = di_score > 6,
+  model = "within"
+)
+summary(fe_s1_interact, vcov = vcovHC(fe_s1_interact, cluster = "group", type = "HC1"))
+
+## STAGE II: Direct Effect (DI → SDG, no mediator)
+model_fe_interact <- plm(
+  formula = sdg_overall ~ di_score * factor(eiu_aut_ep)
+  + lag(di_score, 1) * factor(eiu_aut_ep)
+  + lag(di_score, 2) * factor(eiu_aut_ep)
+  + log_gdppc 
+  + factor(year),
+  data = panel_data_w_transitions,
+  subset = di_score > 6,
+  model = "within"
+)
+summary(model_fe_interact, vcov = vcovHC(model_fe_interact, cluster = "group", type = "HC1"))
+
+## STAGE II: Mediation Effect (DI → SDG, SPI mediator)
+fe_s2_med_interact <- plm(
+  formula = sdg_overall ~ spi_comp * factor(eiu_aut_ep)
+  + lag(spi_comp, 1) * factor(eiu_aut_ep)
+  + lag(spi_comp, 2) * factor(eiu_aut_ep)
+  + di_score * factor(eiu_aut_ep)
+  + lag(di_score, 1) * factor(eiu_aut_ep)
+  + lag(di_score, 2) * factor(eiu_aut_ep)
+  + log_gdppc 
+  + factor(year), 
+  data = panel_data_w_transitions,
+  subset = di_score > 6,
+  model = "fd"
+)
+summary(fe_s2_med_interact, vcov = vcovHC(fe_s2_med_interact, cluster = "group", type = "HC1"))
+```

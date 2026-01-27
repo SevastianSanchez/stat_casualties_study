@@ -1,0 +1,88 @@
+---
+title: "disaggregated_y_SPI"
+output: html_document
+---
+
+```{r}
+# set working directory
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+
+#load libraries/packages
+source("packages.R")
+
+# load data
+source("Comp2_panel_wrangling.R") 
+# path = 'data/output_datasets/merged_cleaned_spi.csv'
+
+panel_data <- panel_data %>% 
+  select(country_name, country_code, year, sdg_overall, spi_comp, sci_overall, 
+         di_score, elect_dem, log_gdppc, income_level_recoded, p1_use, 
+         p2_services, p3_products, p4_sources, p5_infra, goal1:goal17) %>% 
+  filter(year >= 2015) # filter to only years with SPI data (2015-2023)
+
+```
+
+**All 5 Pillars:**
+p1_use = Pillar 1 (Use): 1.1 International Bodies
+
+p2_services = Pillar 2 (Services): 2.1 Quality of Data Releases, 2.2 Richness & Openness of Online Access, 2.3 Availability & Use of Data Services
+
+p3_products = Pillar 3 (Products): 3.1 Social (SDG 1-6), 3.2 Economic (SDG 7-12), 3.3 Environmental (SDG 13-
+15), 3.4 Institution (SDG 16-17)
+
+p4_sources = Pillar 4 (Sources): 1.1 Statistical Office (Censuses & Surveys), 1.2 Administrative Data, 1.3 Geospatial Data
+
+p5_infra = Pillar 5 (Infrastructure): 5.1 Legislation & Governance, 5.2 Standards & Methods, 5.3 Finance (Domestically & From Donors)
+
+## Baseline Model: All countries 
+```{r}
+# dependent variable
+# p1_use, p2_services, p3_products, p4_sources, p5_infra
+y <- panel_data$p5_infra
+
+# baseline model
+FE_pillar_all <- plm(formula = y ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) + plm::lag(di_score, 2) + log_gdppc + income_level_recoded,
+              model = "within", 
+              index = c("country_code", "year"),
+              data = panel_data, 
+              effect = "twoways")
+summary(FE_pillar_all)
+summary(FE_pillar_all, vcov = vcovHC(FE_pillar_all, cluster = "group", type = "HC1"))
+
+# observations used
+source("functions/extract_plm_data_function.R")
+FE_pillar_all_data <- extract_plm_data(FE_pillar_all)
+```
+
+## Stable Regime, Subgrouping
+```{r}
+# Stable regimes 
+FE_pillar_stable <- plm(formula = y ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) + log_gdppc + income_level_recoded,
+              model = "within", 
+              index = c("country_code", "year"),
+              subset = eiu_stable == 1,
+              data = panel_data, 
+              effect = "twoways")
+summary(FE_pillar_stable)
+summary(FE_pillar_stable, vcov = vcovHC(FE_pillar_stable, cluster = "group", type = "HC1"))
+
+# observations used
+FE_pillar_stable_data <- extract_plm_data(FE_pillar_stable)
+```
+
+## TESTING: MULTIPLE DEPENDENT VARIABLES (SPI) WITH fixest PACKAGE ##
+```{r}
+library(fixest)
+panel_data_testing <- panel(panel_data, ~country_code + year)
+
+# Multiple dependent variables with same predictors
+models <- feols(c(p1_use, p2_services, p3_products, p4_sources, p5_infra) ~ 
+                  l(di_score, 0:2) 
+                + l(spi_comp, 0:2) 
+                + log_gdppc | country_code + year,
+                data = panel_data_testing)
+
+# View all results
+etable(models, cluster = ~country_code + year)
+```
+

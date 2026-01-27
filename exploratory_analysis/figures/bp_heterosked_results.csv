@@ -1,0 +1,4 @@
+"","model","statistic","p.value","parameter","method"
+"1","ols_spi",206.516073189646,7.04813442623109e-39,10,"studentized Breusch-Pagan test"
+"2","ols_sci",86.6212371034201,4.21532756725839e-12,15,"studentized Breusch-Pagan test"
+"3","ols_multiple",31.1303922183075,0.000133189792718267,8,"studentized Breusch-Pagan test"

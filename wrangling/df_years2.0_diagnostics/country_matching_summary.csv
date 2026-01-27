@@ -1,0 +1,10 @@
+"dataset_id","dataset_name","total_countries","matched_countries","unmatched_countries","match_rate"
+1,"Varieties of Democracy (V-Dem)",178,178,0,100
+2,"Statistical Performance Indicators (SPI)",217,217,0,100
+3,"Sustainable Development Goals (SDG)",179,167,12,93.2960893854749
+4,"Statistical Capacity Indicators (SCI)",145,145,0,100
+5,"Episodes of Regime Transition (ERT-VDem)",178,178,0,100
+6,"GDP per capita",217,217,0,100
+7,"GNI Classification",221,219,2,99.0950226244344
+8,"EIU Democracy Index (DI)",167,167,0,100
+9,"Gini Coefficient",227,217,10,95.5947136563877

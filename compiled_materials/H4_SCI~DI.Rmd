@@ -1,0 +1,101 @@
+---
+title: "H2_SCI~DI"
+output:
+  word_document: default
+  html_document: default
+---
+
+
+# Set up and Wrangling 
+```{r}
+# set working directory
+setwd("~/Documents/GitHub/QMSS_Thesis_Sanchez")
+
+#load libraries/packages
+source("packages.R")
+
+# load data
+source("Comp2_panel_wrangling.R")
+```
+
+# SPI and DI Relationship
+## Baseline Model [FOUND SOMETHING!!!]
+Using fixed effects regression, how does a change in DI score impact SCI performance? Is the impact lagged or immediate?
+```{r}
+# baseline model
+FE_all <- plm(formula = sci_overall ~ di_score + dplyr::lag(di_score, 1) + dplyr::lag(di_score, 2) + log_gdppc + income_level_recoded,
+              model = "within", 
+              index = c("country_code", "year"),
+              subset = stable == 1,
+              data = panel_data, 
+              effect = "twoways")
+summary(FE_all)
+summary(FE_all, vcov = vcovHC(FE_all, cluster = "group", type = "HC1"))
+```
+
+## Complete Regime Change (autocratized), Subgrouping [FOUND SOMETHING!!!]
+Of countries that experienced complete change from democracy to autocracy (XX countries), how did the decrease in DI score impact their SCI performance? Was the impact lagged or immediate?
+```{r}
+# autocratized variable 
+FE_aut <- plm(formula = sci_overall ~ di_score + dplyr::lag(di_score, 1) + dplyr::lag(di_score, 2) + log_gdppc + income_level_recoded,
+                  model = "within", 
+                  index = c("country_code", "year"),
+                  data = panel_data, 
+                  subset = autocratized == 1, # modifying based regime stability
+                  effect = "twoways")
+summary(FE_aut)
+summary(FE_aut, vcov = vcovHC(FE_aut, cluster = "group", type = "HC1"))
+```
+
+## Complete Regime Change (democratized), Subgrouping [FOUND SOMETHING!!!]
+Of countries that experienced complete change from autocracy to democracy (XX countries), how did the decrease in DI score impact their SCI performance? Was the impact lagged or immediate?
+```{r}
+# autocratized variable 
+FE_dem <- plm(formula = sci_overall ~ di_score + dplyr::lag(di_score, 1) + dplyr::lag(di_score, 2) + log_gdppc + income_level_recoded,
+                  model = "within", 
+                  index = c("country_code", "year"),
+                  data = panel_data, 
+                  subset = democratized == 1, # modifying based on regime stability
+                  effect = "twoways")
+summary(FE_dem)
+summary(FE_dem, vcov = vcovHC(FE_dem, cluster = "group", type = "HC1"))
+```
+
+# Model Observations 
+Function that extracts model data for plm models
+```{r}
+# load the extract_plm_data function
+source("functions/extract_plm_data_function.R")
+
+FE_all_data <- extract_plm_data(FE_all)
+FE_aut_data <- extract_plm_data(FE_aut)
+FE_dem_data <- extract_plm_data(FE_dem)
+```
+
+## Put all three models in a table
+```{r}
+# Extracting robust standard errors for the three FE models
+rob_se_fe <- list(
+  coeftest(FE_all, vcov = vcovHC(FE_all, cluster = "group", type = "HC1"))[, 2],
+  coeftest(FE_aut, vcov = vcovHC(FE_aut, cluster = "group", type = "HC1"))[, 2],
+  coeftest(FE_dem, vcov = vcovHC(FE_dem, cluster = "group", type = "HC1"))[, 2]
+)
+# stargazer table for FE models
+stargazer(
+  FE_all, FE_aut, FE_dem,
+  se = rob_se_fe,
+  type = "html",
+  title = "H4: SCI and DI Fixed Effects Models (Regime Change)",
+  align = TRUE,
+  dep.var.labels = "SCI Overall Score",
+  column.labels = c("All", "Autocratized", "Democratized"),
+  covariate.labels = c("DI Composite", "Lagged DI (t-1)", "Lagged DI (t-2)",  "Log(GDPper-capita)", "Lower-Middle Income (LMIC)", "Upper-Middle Income (UMIC)", "High Income (HIC)", "Intercept"),
+  report = "vcs*",
+  notes = "Robust standard errors clustered by country in parentheses",
+  omit = "factor\\(year\\)",
+  model.names = FALSE,
+  out = "compiled_materials/results/h4_sci_di_FE_models.html"
+)
+```
+
+
