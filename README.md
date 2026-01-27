@@ -1,5 +1,6 @@
 
-# The Statistical Casualties of Regime Change: n/ Mapping Data Deterioration and Its Impact on SDG Performance
+# The Statistical Casualties of Regime Change: 
+## *Mapping Data Deterioration and Its Impact on SDG Performance*
 
 This is the repository for containing all necessary code needed replicate results from my study and/or repurpose for continued study. This study analyzes the complex relationship between democracy, statistical capacity and sustainable development specifically during periods of regime transition.
 
