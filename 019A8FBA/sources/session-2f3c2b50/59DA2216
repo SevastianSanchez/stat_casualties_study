@@ -3,7 +3,7 @@
     "path": "~/Documents/GitHub/stat_casualties_study/panel_regression/interactions_panel_mods/interaction_models.Rmd",
     "project_path": "panel_regression/interactions_panel_mods/interaction_models.Rmd",
     "type": "r_markdown",
-    "hash": "433789610",
+    "hash": "0",
     "contents": "",
     "dirty": false,
     "created": 1769581398691.0,
@@ -12,15 +12,15 @@
     "properties": {
         "source_window_id": "",
         "Source": "Source",
-        "cursorPosition": "183,36",
-        "scrollLine": "161"
+        "cursorPosition": "38,0",
+        "scrollLine": "26"
     },
     "folds": "",
-    "lastKnownWriteTime": 1769583873,
+    "lastKnownWriteTime": 1769634558,
     "encoding": "UTF-8",
     "collab_server": "",
     "source_window": "",
-    "last_content_update": 1769583873580,
+    "last_content_update": 1769634558683,
     "read_only": false,
     "read_only_alternatives": []
 }

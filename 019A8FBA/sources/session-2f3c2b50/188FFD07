@@ -1,0 +1,24 @@
+{
+    "id": "188FFD07",
+    "path": "~/Documents/GitHub/stat_casualties_study/exploratory_analysis/vif_n_corr_matrix.Rmd",
+    "project_path": "exploratory_analysis/vif_n_corr_matrix.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1770053313461.0,
+    "source_on_save": false,
+    "relative_order": 9,
+    "properties": {
+        "source_window_id": "",
+        "Source": "Source"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1769555042,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1769555042,
+    "read_only": false,
+    "read_only_alternatives": []
+}
