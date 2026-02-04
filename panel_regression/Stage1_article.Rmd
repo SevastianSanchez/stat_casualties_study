@@ -445,7 +445,7 @@ combined_plot <- p1 + p2 +
     subtitle = "Tracking effects over time following a one-unit increase in democracy",
     theme = theme(
       plot.title = element_text(hjust = 0.5, size = 18),
-      plot.subtitle = element_text(hjust = 0.5, size = 12),
+      plot.subtitle = element_text(hjust = 0.5, size = 14),
       plot.margin = margin(t = 10, r = 10, b = 10, l = 10)
     )
   ) &

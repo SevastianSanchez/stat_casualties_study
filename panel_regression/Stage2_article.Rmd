@@ -584,7 +584,7 @@ p1_de <- ggplot(instant_data, aes(x = factor(period, labels = period_labels),
   scale_fill_manual(values = c("FD" = "#3182bd", "TWFE" = "#e6550d")) +
   labs(x = "Time Since Democracy Shift", 
        y = "Effect per Period",
-       title = "Period-Specific Effects") +
+       title = "Period-Specific Effects (Direct Models)") +
   theme_minimal(base_size = 12) +
   theme(legend.position = "bottom",
         plot.title = element_text(size = 11, face = "bold"))
@@ -601,7 +601,7 @@ p2_de <- ggplot(cumul_data, aes(x = factor(period, labels = period_labels),
   scale_fill_manual(values = c("FD" = "#3182bd", "TWFE" = "#e6550d")) +
   labs(x = "Time Since Democracy Shift", 
        y = "Cumulative Effect",
-       title = "Cumulative Effects Over Time") +
+       title = "Cumulative Effects Over Time (Direct Models)") +
   theme_minimal(base_size = 12) +
   theme(legend.position = "bottom",
         plot.title = element_text(size = 11, face = "bold"))
@@ -735,7 +735,7 @@ p1_me <- ggplot(instant_data, aes(x = factor(period, labels = period_labels),
   scale_fill_manual(values = c("FD" = "#3182bd", "TWFE" = "#e6550d")) +
   labs(x = "Time Since Democracy Shift", 
        y = "Effect per Period",
-       title = "Period-Specific Effects") +
+       title = "Period-Specific Effects (Mediation Models)") +
   theme_minimal(base_size = 12) +
   theme(legend.position = "bottom",
         plot.title = element_text(size = 11, face = "bold"))
@@ -752,7 +752,7 @@ p2_me <- ggplot(cumul_data, aes(x = factor(period, labels = period_labels),
   scale_fill_manual(values = c("FD" = "#3182bd", "TWFE" = "#e6550d")) +
   labs(x = "Time Since Democracy Shift", 
        y = "Cumulative Effect",
-       title = "Cumulative Effects Over Time") +
+       title = "Cumulative Effects Over Time (Mediation Models)") +
   theme_minimal(base_size = 12) +
   theme(legend.position = "bottom",
         plot.title = element_text(size = 11, face = "bold"))
@@ -824,7 +824,7 @@ combined_s2_bw <- (p1_de_bw | p2_de_bw) / (p1_me_bw | p2_me_bw) +
     subtitle = "Comparing effects over time with and without SPI mediator",
     theme = theme(
       plot.title = element_text(hjust = 0.5, size = 18),
-      plot.subtitle = element_text(hjust = 0.5, size = 12),
+      plot.subtitle = element_text(hjust = 0.5, size = 14),
       plot.margin = margin(t = 10, r = 10, b = 10, l = 10)
     )
   ) &
@@ -847,7 +847,7 @@ rob_se_total_ef <- list(
   sqrt(diag(vcovHC(fd_dir_current, cluster = "group", type = "HC1"))),
   sqrt(diag(vcovHC(fd_dir_dynamic, cluster = "group", type = "HC1"))),
   sqrt(diag(vcovHC(twfe_dir_current, cluster = "group", type = "HC1"))),
-  sqrt(diag(vcovHC(twfe_dir_dynamic, cluster = "group", type = "HC1")))
+  sqrt(diag(vcovHC(twfe_dir_dynamic, cluster = "group", type = "HC1"))) 
 )
 # Generate the stargazer table for Lag2 models
 stargazer(fd_dir_current, fd_dir_dynamic, twfe_dir_current, twfe_dir_dynamic, 
