@@ -623,7 +623,7 @@ combined_plot_de <- p1_de + p2_de +
 combined_plot_de
 
 # Save normally
-ggsave("panel_regression/figures/stage2/direct_effects/combined_dynamic_effects_de_s2_color.png", 
+ggsave("panel_regression/figures/stage2/direct_effects/combined_dynamic_effects_dir_s2_color.png", 
        plot = combined_plot_de, 
        width = 12, height = 6)
 
@@ -652,7 +652,7 @@ combined_plot_de_bw <- p1_de_bw + p2_de_bw +
 combined_plot_de_bw
 
 # Save bw version 
-ggsave("panel_regression/figures/stage2/direct_effects/combined_dynamic_effects_de_s2_bw.png", 
+ggsave("panel_regression/figures/stage2/direct_effects/combined_dynamic_effects_dir_s2_bw.png", 
        plot = combined_plot_de_bw, 
        width = 12, height = 6)
 ```
