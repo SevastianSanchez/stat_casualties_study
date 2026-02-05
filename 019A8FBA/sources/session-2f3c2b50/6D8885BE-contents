@@ -197,11 +197,6 @@ length(dropped_ids)   # should be 7
 dropped_ids           # which countries are excluded
 ```
 
-fd_med_current
-twfe_med_current
-fd_med_dynamic
-twfe_med_dynamic
-
 ## FD MEDIATION MODEL: SDG ~ DI + SPI 
 ```{r}
 # Contemporaneous Effects: SDG ~ DI + SPI [REPORTED]
@@ -280,13 +275,13 @@ In terms of *cumulative impact*, based on the FD model and panel data, there is 
 ## TWFE MEDIATION MODEL: SDG ~ DI + SPI 
 ```{r}
 # Contemporaneous Effects: SDG ~ DI + SPI [REPORTED]
-fe_sdg_spi_current <- plm(formula = sdg_overall ~ spi_comp 
+twfe_sdg_spi_current <- plm(formula = sdg_overall ~ spi_comp 
                      + di_score 
                      + log_gdppc 
                      + factor(year), 
                model = "within", 
                data = panel_data)
-summary(fe_sdg_spi_current, vcov = vcovHC(fe_sdg_spi_current, cluster = "group", type = "HC1"))
+summary(twfe_sdg_spi_current, vcov = vcovHC(twfe_sdg_spi_current, cluster = "group", type = "HC1"))
 
 # Adding Lag2: SPI ~ DI
 twfe_med_dynamic <- plm(formula = sdg_overall ~ spi_comp 
@@ -381,29 +376,29 @@ coef_df_fd_med <- data.frame(
 )
 
 # TWFE Direct Effects
-coefs_fe_direct <- summary(twfe_dir_dynamic, vcov = vcovHC(twfe_dir_dynamic, cluster = "group", type = "HC1"))$coefficients
-coef_df_fe_direct <- data.frame(
+coefs_twfe_direct <- summary(twfe_dir_dynamic, vcov = vcovHC(twfe_dir_dynamic, cluster = "group", type = "HC1"))$coefficients
+coef_df_twfe_direct <- data.frame(
   model = "TWFE_Direct",
-  term = rownames(coefs_fe_direct),
-  estimate = coefs_fe_direct[, "Estimate"],
-  std.error = coefs_fe_direct[, "Std. Error"],
-  ci_low = coefs_fe_direct[, "Estimate"] - 1.96 * coefs_fe_direct[, "Std. Error"],
-  ci_high = coefs_fe_direct[, "Estimate"] + 1.96 * coefs_fe_direct[, "Std. Error"]
+  term = rownames(coefs_twfe_direct),
+  estimate = coefs_twfe_direct[, "Estimate"],
+  std.error = coefs_twfe_direct[, "Std. Error"],
+  ci_low = coefs_twfe_direct[, "Estimate"] - 1.96 * coefs_twfe_direct[, "Std. Error"],
+  ci_high = coefs_twfe_direct[, "Estimate"] + 1.96 * coefs_twfe_direct[, "Std. Error"]
 )
 
 # TWFE Mediation Effects
-coefs_fe_med <- summary(twfe_med_dynamic, vcov = vcovHC(twfe_med_dynamic, cluster = "group", type = "HC1"))$coefficients
-coef_df_fe_med <- data.frame(
+coefs_twfe_med <- summary(twfe_med_dynamic, vcov = vcovHC(twfe_med_dynamic, cluster = "group", type = "HC1"))$coefficients
+coef_df_twfe_med <- data.frame(
   model = "TWFE_Mediation",
-  term = rownames(coefs_fe_med),
-  estimate = coefs_fe_med[, "Estimate"],
-  std.error = coefs_fe_med[, "Std. Error"],
-  ci_low = coefs_fe_med[, "Estimate"] - 1.96 * coefs_fe_med[, "Std. Error"],
-  ci_high = coefs_fe_med[, "Estimate"] + 1.96 * coefs_fe_med[, "Std. Error"]
+  term = rownames(coefs_twfe_med),
+  estimate = coefs_twfe_med[, "Estimate"],
+  std.error = coefs_twfe_med[, "Std. Error"],
+  ci_low = coefs_twfe_med[, "Estimate"] - 1.96 * coefs_twfe_med[, "Std. Error"],
+  ci_high = coefs_twfe_med[, "Estimate"] + 1.96 * coefs_twfe_med[, "Std. Error"]
 )
 
 # Combine all into one dataframe
-stage2_model_results <- rbind(coef_df_fd_direct, coef_df_fd_med, coef_df_fe_direct, coef_df_fe_med)
+stage2_model_results <- rbind(coef_df_fd_direct, coef_df_fd_med, coef_df_twfe_direct, coef_df_twfe_med)
 
 # View combined results
 head(stage2_model_results)
@@ -501,7 +496,7 @@ ebar_fe <- ggplot(sub_model, aes(x = term, y = estimate)) +
 ebar_fe
 
 # Save the plot
-ggsave("panel_regression/figures/stage2/error_bar_twtwfe_med_dynamic.png", ebar_fe, width = 10, height = 6)
+ggsave("panel_regression/figures/stage2/error_bar_twfe_med_dynamic.png", ebar_fe, width = 10, height = 6)
 ```
 
 ## DYNAMIC IMPACTS VISUALIZATIONS ##

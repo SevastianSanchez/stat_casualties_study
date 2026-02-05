@@ -47,7 +47,7 @@ dim(panel_data1)
 # panel_data <- panel_data_spi
 ```
 *sensitivity analysis [REVISE -USING PLM::LAGs]*
-Basing analysis of dataset sensitivity on FE model of the second order (fe_spi_di_L2)
+Basing analysis of dataset sensitivity on FE model of the second order (twfe_spi_di_dymanic)
 
 - Dataset = panel_data_comp1_data, 1336 obs, 167 countries, FE model coefficient 
 (di_score_lag2) showed p = 0.07598 (marginally significant)
@@ -62,9 +62,9 @@ Basing analysis of dataset sensitivity on FE model of the second order (fe_spi_d
 (di_score_lag2) showed p = 0.1497 (not significant)
 
 # Stage 1 Models (reported):
-ols_spi_di_L2 [abstract]
-fd_spi_di_L2
-fe_spi_di_L2
+ols_spi_di_dymanic [abstract]
+fd_spi_di_dymanic
+twfe_spi_di_dymanic
 
 ## Converting to panel data frame
 ```{r}
@@ -76,19 +76,19 @@ pdim(panel_data) # check panel dimensions
 The effect of democracy on SPI Performance
 ```{r}
 # Lag2: SPI ~ DI [REPORTED]
-ols_spi_di_L2 <- plm(
+ols_spi_di_dymanic <- plm(
   formula = spi_comp ~ di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2)
   + log_gdppc 
   + factor(year), 
   model = "pooling", 
   data = panel_data)
-summary(ols_spi_di_L2, vcov = vcovHC(ols_spi_di_L2, cluster = "group", type = "HC1"))
+summary(ols_spi_di_dymanic, vcov = vcovHC(ols_spi_di_dymanic, cluster = "group", type = "HC1"))
 ```
 
 ## Checking which countries are dropped due to missingness
 ```{r}
 # rows actually used in the model
-model_rows <- rownames(model.frame(ols_spi_di_L2))
+model_rows <- rownames(model.frame(ols_spi_di_dymanic))
 used_ids <- unique(panel_data[model_rows, "country_code"])
 dropped_ids <- setdiff(unique(panel_data1$country_code), used_ids)
 
@@ -111,7 +111,7 @@ fd_spi_di_current <- plm(
 summary(fd_spi_di_current, vcov = vcovHC(fd_spi_di_current, cluster = "group", type = "HC1"))
 
 # Delayed Lag2: SPI ~ DI [REPORTED]
-fd_spi_di_L2 <- plm(
+fd_spi_di_dymanic <- plm(
   formula = spi_comp ~ di_score 
   + plm::lag(di_score, 1) 
   + plm::lag(di_score, 2) 
@@ -120,22 +120,22 @@ fd_spi_di_L2 <- plm(
   data = panel_data, 
   model = "fd"
 )
-summary(fd_spi_di_L2, vcov = vcovHC(fd_spi_di_L2, cluster = "group", type = "HC1"))
+summary(fd_spi_di_dymanic, vcov = vcovHC(fd_spi_di_dymanic, cluster = "group", type = "HC1"))
 
 # joint significance 
-# names(coef(fd_spi_di_L2)) # ensure correct names 
+# names(coef(fd_spi_di_dymanic)) # ensure correct names 
 linearHypothesis(
-  fd_spi_di_L2,
+  fd_spi_di_dymanic,
   c("di_score = 0", "plm::lag(di_score, 1) = 0", "plm::lag(di_score, 2) = 0"),
-  vcov. = vcovHC(fd_spi_di_L2, cluster = "group", type = "HC1"), 
+  vcov. = vcovHC(fd_spi_di_dymanic, cluster = "group", type = "HC1"), 
   test = "F"
 )
 
 # cumulative effects 
 linearHypothesis(
-  fd_spi_di_L2,
+  fd_spi_di_dymanic,
   c("di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) = 0"),
-  vcov. = vcovHC(fd_spi_di_L2, cluster = "group", type = "HC1"), 
+  vcov. = vcovHC(fd_spi_di_dymanic, cluster = "group", type = "HC1"), 
   test = "F"
 )
 ```
@@ -146,16 +146,16 @@ In terms of *cumulative impact*, based on the FD model and panel data, there is 
 # 1.3) Fixed Effects [Stage 1]: SPI ~ DI
 ```{r}
 # Contemporaneous Effects: SPI ~ DI [REPORTED]
-fe_spi_di_current <- plm(
+twfe_spi_di_current <- plm(
   formula = spi_comp ~ di_score 
   + log_gdppc 
   + factor(year),
   data = panel_data,
   model = "within")
-summary(fe_spi_di_current, vcov = vcovHC(fe_spi_di_current, cluster = "group", type = "HC1"))
+summary(twfe_spi_di_current, vcov = vcovHC(twfe_spi_di_current, cluster = "group", type = "HC1"))
 
 # Lag2: SPI ~ DI [REPORTED]
-fe_spi_di_L2 <- plm(
+twfe_spi_di_dymanic <- plm(
   formula = spi_comp ~ di_score 
   + plm::lag(di_score, 1) 
   + plm::lag(di_score, 2) 
@@ -163,21 +163,21 @@ fe_spi_di_L2 <- plm(
   + factor(year),
   data = panel_data,
   model = "within")
-summary(fe_spi_di_L2, vcov = vcovHC(fe_spi_di_L2, cluster = "group", type = "HC1"))
+summary(twfe_spi_di_dymanic, vcov = vcovHC(twfe_spi_di_dymanic, cluster = "group", type = "HC1"))
 
 # joint significance: is there an effect between these three variables? 
 linearHypothesis(
-  fe_spi_di_L2,
+  twfe_spi_di_dymanic,
   c("di_score = 0", "plm::lag(di_score, 1) = 0", "plm::lag(di_score, 2) = 0"),
-  vcov. = vcovHC(fe_spi_di_L2, cluster = "group", type = "HC1"), 
+  vcov. = vcovHC(twfe_spi_di_dymanic, cluster = "group", type = "HC1"), 
   test = "F"
 )
 
 # cumulative effects
 linearHypothesis(
-  fe_spi_di_L2,
+  twfe_spi_di_dymanic,
   c("di_score + plm::lag(di_score, 1) + plm::lag(di_score, 2) = 0"),
-  vcov. = vcovHC(fe_spi_di_L2, cluster = "group", type = "HC1"), 
+  vcov. = vcovHC(twfe_spi_di_dymanic, cluster = "group", type = "HC1"), 
   test = "F"
 )
 ```
@@ -186,8 +186,8 @@ linearHypothesis(
 In terms of *cumulative impact*, based on the FE model and panel data, there is no detectable total impact of changes in di_score (at current, lag 1, or lag 2) on SPI —over these periods. (F = 0.0107, p = 0.9175)
 
 ```{r}
-# CI for all variables (L2 model)
-robust_results_fd <- coeftest(fd_spi_di_L2, vcov = vcovHC(fd_spi_di_L2, cluster = "group", type = "HC1"))
+# CI for all variables (dymanic model)
+robust_results_fd <- coeftest(fd_spi_di_dymanic, vcov = vcovHC(fd_spi_di_dymanic, cluster = "group", type = "HC1"))
 
 # Create data frame for plotting
 coef_fd_df <- data.frame(
@@ -199,8 +199,8 @@ coef_fd_df <- data.frame(
   ci_high = robust_results_fd[, "Estimate"] + 1.96 * robust_results_fd[, "Std. Error"]
 )
 
-# CI for all variables (L2 model)
-robust_results_fe <- coeftest(fe_spi_di_L2, vcov = vcovHC(fe_spi_di_L2, cluster = "group", type = "HC1"))
+# CI for all variables (dymanic model)
+robust_results_fe <- coeftest(twfe_spi_di_dymanic, vcov = vcovHC(twfe_spi_di_dymanic, cluster = "group", type = "HC1"))
 
 # Create data frame for plotting
 coef_twfe_df <- data.frame(
@@ -223,7 +223,7 @@ write.csv(stage1_models_results, "panel_regression/model_results/stage1_model_re
           row.names = FALSE)
 ```
 
-## First Difference CI Results & Error Bar Visualization (L2)
+## First Difference CI Results & Error Bar Visualization (dymanic)
 ```{r}
 # filter to only the first four rows (variables of interest)
 sub_model <- stage1_models_results %>%
@@ -309,13 +309,13 @@ ebar_fd_clean <- ebar_fd +
   theme(plot.title = element_text(hjust = 0.5, size = 14)) +
   ylim(common_ylim)
 
-ebar_fe_clean <- ebar_fe + 
+ebar_twfe_clean <- ebar_fe + 
   labs(title = "Two-Way Fixed Effects", caption = NULL) +
   theme(plot.title = element_text(hjust = 0.5, size = 14)) +
   ylim(common_ylim)
 
 # Combine plots side by side with single caption
-combined_stage1_ebar_plot <- ebar_fd_clean + ebar_fe_clean +
+combined_stage1_ebar_plot <- ebar_fd_clean + ebar_twfe_clean +
   plot_layout(guides = "collect") +
   plot_annotation(
     title = "Stage I: Dynamic Effects of Democracy on Statistical Capacity",
@@ -341,7 +341,7 @@ ggsave("panel_regression/figures/stage1/combined_error_bars_stage1.png",
 
 ## (Dynamic) Effect Sizes Visualization [REVISED - AI]
 ```{r}
-# Use existing dataframes created earlier:  coef_fd_plot_df and coef_fe_plot_df
+# Use existing dataframes created earlier:  coef_fd_plot_df and coef_twfe_plot_df
 # These already contain estimates and 95% CIs for DI variables (current, lag1, lag2)
 
 # Extract DI coefficients only (exclude log_gdppc)
@@ -498,12 +498,12 @@ ggsave("panel_regression/figures/stage1/combined_dynamic_effects_s1_bw.png",
 ```{r eval=FALSE, include=FALSE}
 # stargazer table for only lag2 models
 stargazer(
-  fd_spi_di_current, fd_spi_di_L2, fe_spi_di_current, fe_spi_di_L2,
+  fd_spi_di_current, fd_spi_di_dymanic, twfe_spi_di_current, twfe_spi_di_dymanic,
   se = list(
     coeftest(fd_spi_di_current, vcov = vcovHC(fd_spi_di_current, cluster = "group", type = "HC1"))[, 2],
-    coeftest(fd_spi_di_L2, vcov = vcovHC(fd_spi_di_L2, cluster = "group", type = "HC1"))[, 2],
-    coeftest(fe_spi_di_current, vcov = vcovHC(fe_spi_di_current, cluster = "group", type = "HC1"))[, 2],
-    coeftest(fe_spi_di_L2, vcov = vcovHC(fe_spi_di_L2, cluster = "group", type = "HC1"))[, 2]
+    coeftest(fd_spi_di_dymanic, vcov = vcovHC(fd_spi_di_dymanic, cluster = "group", type = "HC1"))[, 2],
+    coeftest(twfe_spi_di_current, vcov = vcovHC(twfe_spi_di_current, cluster = "group", type = "HC1"))[, 2],
+    coeftest(twfe_spi_di_dymanic, vcov = vcovHC(twfe_spi_di_dymanic, cluster = "group", type = "HC1"))[, 2]
   ),
   type = "html",
   title = "Stage I Models: Dynamic & Contemporaneous Effects",
@@ -525,9 +525,9 @@ stargazer(
 # APPLY Wooldridge Test for AR(1) Errors in FE Panel Models: pwartest()
 # https://search.r-project.org/CRAN/refmans/plm/html/pwartest.html  
 # This is MUCH BETTER for panel data with small T AND unbalanced panels!!!
-pbgtest(fe_spi_di_L2) # Panel
-pwartest(fe_spi_di_L2) # FE [significant]
-pwfdtest(fd_spi_di_L2) # FD [Not significant: NO EVIDENCE OF AUTOCORRELATION]
+pbgtest(twfe_spi_di_dymanic) # Panel
+pwartest(twfe_spi_di_dymanic) # FE [significant]
+pwfdtest(fd_spi_di_dymanic) # FD [Not significant: NO EVIDENCE OF AUTOCORRELATION]
 ```
 Significant p-value indicates the presence of autocorrelation in the residuals of the fixed effects model. This suggests that the errors are correlated over time, which violates one of the key assumptions of linear regression models.
 
@@ -536,7 +536,7 @@ This is corrected by using robust standard errors clustered by country, which ac
 ## Check for Heteroskedasticity
 ```{r}
 # Apply Breusch-Pagan test for heteroskedasticity
-bptest(fe_spi_di_L2, studentize = TRUE) # [significant]
-bptest(fd_spi_di_L2, studentize = TRUE) # [significant]
+bptest(twfe_spi_di_dymanic, studentize = TRUE) # [significant]
+bptest(fd_spi_di_dymanic, studentize = TRUE) # [significant]
 ```
 The Breusch-Pagan test indicates the presence of heteroskedasticity in the residuals of the fixed effects model. This suggests that the variance of the errors is not constant across observations, which violates another key assumption of linear regression models.
